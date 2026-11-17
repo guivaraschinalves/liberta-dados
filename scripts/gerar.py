@@ -55,6 +55,25 @@ def br(d):
 
 # --------------------------------------------------------------------------- fontes
 
+# Proventos que o Yahoo registra errado. Em 22/11/2022 (ex-data) a Petrobras pagou R$ 3,3489 por ação,
+# o dividendo do 3º tri/2022 em duas parcelas (Fato Relevante de 03/11/2022); o Yahoo só tem a
+# primeira, R$ 1,7487, e o fechamento ajustado dele subestima a PETR4 com proventos em ~7%.
+CORRECOES_PROVENTOS = {"PETR4.SA": {dt.date(2022, 11, 22): 3.3489}}
+
+
+def retorno_total(fech, proventos):
+    """Índice de retorno total a partir do fechamento e dos proventos por ex-data:
+    no dia ex, o provento é reinvestido ao preço de fechamento do dia anterior."""
+    idx, ant, saida = 1.0, None, {}
+    for d in sorted(fech):
+        if ant is not None:
+            idx *= (fech[d] + proventos.get(d, 0.0)) / fech[ant]
+        saida[d] = idx
+        ant = d
+    ult = max(saida)
+    return {d: v / saida[ult] * fech[ult] for d, v in saida.items()}
+
+
 def yahoo(simbolo):
     """Fechamentos diários (data local da bolsa). Devolve (fechamento, ajustado).
 
@@ -85,6 +104,11 @@ def yahoo(simbolo):
         ajus[d] = adj[i]
     splits = [(dt.datetime.fromtimestamp(int(k), tz).date().isoformat(), v["splitRatio"])
               for k, v in r.get("events", {}).get("splits", {}).items()]
+    if simbolo in CORRECOES_PROVENTOS:
+        prov = {dt.datetime.fromtimestamp(int(k), tz).date(): v["amount"]
+                for k, v in r.get("events", {}).get("dividends", {}).items()}
+        prov.update(CORRECOES_PROVENTOS[simbolo])
+        ajus = retorno_total(fech, prov)
     return fech, ajus, splits
 
 
@@ -553,6 +577,8 @@ def escrever_xlsx(ativos, resumo):
         "CDI: taxa diária (SGS 12) capitalizada de 14/11/2013 até 16/11/2026; a taxa de cada dia rende até o dia útil seguinte.",
         "Coluna principal é só preço. A coluna de proventos reinveste dividendos e JCP brutos (Yahoo: fechamento ajustado; "
         "S&P 500: índice de retorno total). O Ibovespa já é um índice de retorno total.",
+        "PETR4 com proventos: recalculada do fechamento e dos proventos por ex-data, com o dividendo de 22/11/2022 "
+        "corrigido para R$ 3,3489 por ação (o Yahoo registra só a 1ª parcela, R$ 1,7487).",
         "Sem imposto de renda, IOF, custódia ou corretagem em nenhum caso.",
         "Brent e gasolina são comparações de preço: os R$ 100 mil seriam comprar o produto e vendê-lo hoje.",
         "",

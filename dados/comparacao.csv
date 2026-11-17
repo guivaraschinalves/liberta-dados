@@ -1,7 +1,7 @@
 Ativo/indicador,Data de referência inicial,Valor em 17/11/2013,Data de referência final,Valor em 17/11/2026,Unidade,Variação na moeda original (%),Variação acumulada em reais (%),R$ 100 mil de 2013 valeriam hoje (R$),"Em poder de compra de 2013, descontado o IPCA (R$)",Com proventos reinvestidos (R$),Retorno ao ano (%),Acima do IPCA (%),Fonte
 CDI (rentabilidade acumulada),14/11/2013,100.0,17/11/2026,348.024255,"índice, 14/11/2013 = 100",248.02,248.02,348024.26,169812.54,,10.07,69.81,"Banco Central, SGS 12 (CDI diário), capitalizado dia a dia"
 Ibovespa,14/11/2013,53452.0,16/11/2026,169295.0,pontos,216.72,216.72,316723.42,154539.82,,9.27,54.54,"B3, via Yahoo Finance"
-Petrobras (PETR4),14/11/2013,20.45,16/11/2026,44.02,R$ por ação,115.26,115.26,215256.72,105030.87,918132.66,6.07,5.03,"B3, via Yahoo Finance (fechamento e fechamento ajustado por proventos)"
+Petrobras (PETR4),14/11/2013,20.45,16/11/2026,44.02,R$ por ação,115.26,115.26,215256.72,105030.87,958123.02,6.07,5.03,"B3, via Yahoo Finance (fechamento e fechamento ajustado por proventos)"
 S&P 500,15/11/2013,1798.1801,16/11/2026,7416.5898,pontos,312.45,915.21,1015211.94,495355.47,1274193.14,19.52,395.36,"S&P Dow Jones Indices, via Yahoo Finance (^GSPC e ^SP500TR, com dividendos)"
 Nvidia (NVDA),15/11/2013,0.4042,16/11/2026,156.14,US$ por ação,38529.39,94983.14,95083139.34,46394206.63,101610888.21,69.47,46294.21,"Nasdaq, via Yahoo Finance (preço corrigido por desdobramentos: 4 por 1 em 20/07/2021 e 10 por 1 em 10/06/2024)"
 Take-Two Interactive (TTWO),15/11/2013,17.99,16/11/2026,213.47,US$ por ação,1086.6,2820.73,2920729.47,1425120.45,2920729.53,29.64,1325.12,"Nasdaq, via Yahoo Finance (preço corrigido por desdobramento)"
