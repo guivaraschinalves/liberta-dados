@@ -11,7 +11,7 @@
   /* Identidade Liberta (brandbook): preto, verde #1ED760, verdes-escuros #00342A/#00231B, cinza #29292A, Inter. */
   :root {
     --bg: #000000; --cartao: #0b0f0e; --cartao2: #00231b; --fg: #ffffff; --suave: #a7adb0; --borda: #1d2a26; --grade: #18201e;
-    --verde: #1ed760; --verde-escuro: #00342a; --hipo: #00342a; --cdi: #ffffff; --ipca: #8f979c; --outros: #3a4044;
+    --verde: #1ed760; --verde-escuro: #00342a; --hipo: #00342a; --cdi: #ffffff; --ipca: #8f979c; --outros: #3a4044; --parado: #b48cff;
     --texto: "Inter", "Helvetica Neue", Arial, sans-serif;
     color-scheme: dark;
   }
@@ -48,6 +48,7 @@
   .legenda i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
   .legenda i.vazado { background: var(--hipo); box-shadow: inset 0 0 0 1.5px var(--verde); }
   .legenda i.linha { height: 0; border-top: 2px dashed var(--ipca); border-radius: 0; }
+  .legenda i.linha.pontos { border-top: 3px dotted var(--parado); }
   .legenda i.linha.cheia { border-top: 2.5px solid var(--cdi); }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
   svg text { font-family: var(--texto); fill: var(--fg); }
@@ -75,6 +76,9 @@
   .notas p { max-width: 90ch; font-weight: 300; }
   #notas { display: grid; gap: 8px; }
   .rotulo { paint-order: stroke; stroke: var(--cartao); stroke-width: 4px; stroke-linejoin: round; }
+  .series { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .85rem; color: var(--suave); }
+  .series a { color: var(--fg); border: 1px solid #26322e; border-radius: 999px; padding: 4px 12px; text-decoration: none; }
+  .series a:hover { border-color: var(--verde); }
   .imagens { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .imagens img { width: 100%; height: auto; display: block; border-radius: 8px; }
   .dl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-top: 8px; font-size: .78rem; }
@@ -123,7 +127,7 @@
       <span><i style="background:var(--verde)"></i>Investimento</span>
       <span><i class="vazado"></i>Preço de produto (simulação hipotética)</span>
       <span><i style="background:var(--ipca)"></i>IPCA</span>
-      <span><i class="vazado" style="box-shadow: inset 0 0 0 1.5px var(--ipca); background: transparent"></i>Dinheiro parado</span>
+      <span><i class="vazado" style="box-shadow: inset 0 0 0 1.5px var(--parado); background: transparent"></i>Dinheiro parado</span>
       <span><i class="linha"></i>Inflação (IPCA)</span>
     </div>
     <div class="graf" id="g-barras"></div>
@@ -131,15 +135,26 @@
 
   <section class="cartao">
     <h2>Trajetória de R$ 100 mil, mês a mês, em reais</h2>
-    <p class="sub">Escolha um ativo para destacar. CDI e IPCA ficam sempre à vista como referência; escala logarítmica.</p>
+    <p class="sub">Escolha um ativo para destacar. CDI, IPCA e dinheiro parado ficam sempre à vista; escala logarítmica.</p>
+    <div class="controles">
+      <span class="rot">Valores:</span>
+      <button class="botao" data-real="0" aria-pressed="true">Em reais de hoje</button>
+      <button class="botao" data-real="1" aria-pressed="false">Descontada a inflação</button>
+    </div>
     <div class="chips" id="chips"></div>
     <div class="legenda">
       <span><i style="background:var(--verde)"></i><span id="leg-sel">Ativo escolhido</span></span>
       <span><i class="linha cheia"></i>CDI</span>
       <span><i class="linha"></i>IPCA</span>
+      <span><i class="linha pontos"></i>Dinheiro parado (perda de poder de compra)</span>
       <span><i style="background:var(--outros)"></i>Demais</span>
     </div>
     <div class="graf" id="g-linhas"></div>
+    <div class="series">Baixar a série:
+      <a href="dados/serie-mensal.csv" download>mensal, em reais (CSV)</a>
+      <a href="dados/serie-mensal-descontada-ipca.csv" download>mensal, descontada a inflação (CSV)</a>
+      <a href="dados/serie-diaria.csv" download>diária, preços originais (CSV)</a>
+    </div>
   </section>
 
   <section class="cartao">
@@ -179,15 +194,21 @@
   const pct = (x, d = 1) => (x >= 0 ? "+" : "−") + nf(d).format(Math.abs(x * 100)) + "%";
   function reais(v, curto = false) {
     if (v >= 1e6) return "R$ " + nf(curto ? 1 : 2).format(v / 1e6) + " mi";
-    if (curto) return "R$ " + nf(0).format(v / 1e3) + " mil";
+    if (curto) return "R$ " + nf(v < 1e5 ? 1 : 0).format(v / 1e3) + " mil";
     return "R$ " + nf(0).format(v);
   }
   const vezes = v => nf(v / R.capital >= 100 ? 0 : 1).format(v / R.capital) + "×";
   const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
   const mesBR = s => ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+s.slice(5, 7) - 1] + "/" + s.slice(0, 4);
   const hoje = a => (modo === "tr" && a.hoje_tr) ? a.hoje_tr : a.hoje;
-  const traj = a => (modo === "tr" && a.trajetoria_tr) ? a.trajetoria_tr : a.trajetoria;
-  const curto = { cdi: "CDI", ibov: "Ibovespa", petr4: "Petrobras", sp500: "S&P 500", nvda: "Nvidia", ttwo: "Take-Two",
+  const trajBase = a => (modo === "tr" && a.trajetoria_tr) ? a.trajetoria_tr : a.trajetoria;
+  // Deflator do mês: IPCA acumulado desde out/2013 (a trajetória do IPCA é R$ 100 mil corrigidos)
+  const deflator = s => { let v = R.capital; for (const p of porId.ipca.trajetoria) { if (p[0].slice(0, 7) <= s.slice(0, 7)) v = p[1]; else break; } return v / R.capital; };
+  const fimMercado = ["ibov", "petr4", "sp500", "nvda", "ttwo"].map(k => porId[k].d1).sort().pop();
+  const PARADO = { id: "parado", nome: "Dinheiro parado", tipo: "Referência",
+                   trajetoria: [...porId.ipca.trajetoria.map(p => [p[0], R.capital]), [fimMercado, R.capital]] };
+  const traj = a => real ? trajBase(a).map(p => [p[0], p[1] / deflator(p[0])]) : trajBase(a);
+  const curto = { parado: "Dinheiro parado", cdi: "CDI", ibov: "Ibovespa", petr4: "Petrobras", sp500: "S&P 500", nvda: "Nvidia", ttwo: "Take-Two",
                   btc: "Bitcoin", ipca: "IPCA", dolar: "Dólar", brent: "Brent", gasolina: "Gasolina" };
   function el(tag, at = {}, pai) {
     const e = document.createElementNS(svgNS, tag);
@@ -252,7 +273,7 @@
       const n = el("text", { x: x0, y: y + 12, "font-size": 13, "font-weight": 700, class: "rotulo" }, svg);
       n.textContent = a.nome + (modo === "tr" && a.hoje_tr ? " · com proventos" : "");
       const a0 = X(Math.min(v, R.capital)), a1 = X(Math.max(v, R.capital));
-      el("rect", { x: a0, y: y + 18, width: Math.max(2, a1 - a0), height: 16, rx: 3, fill: cor, stroke: a.id === "parado" ? "var(--ipca)" : a.tipo.startsWith("Preço") ? "var(--verde)" : "none", "stroke-width": 1.5 }, svg);
+      el("rect", { x: a0, y: y + 18, width: Math.max(2, a1 - a0), height: 16, rx: 3, fill: cor, stroke: a.id === "parado" ? "var(--parado)" : a.tipo.startsWith("Preço") ? "var(--verde)" : "none", "stroke-width": 1.5 }, svg);
       const val = el("text", { x: a1 + 6, y: y + 31, "font-size": 13 }, svg);
       val.textContent = `${reais(v, true)} · ${pct(v / R.capital - 1)}`;
       const alvo = el("rect", { x: 0, y: y, width: W, height: lin, fill: "transparent" }, svg);
@@ -287,14 +308,16 @@
     document.getElementById("leg-sel").textContent = porId[selecionado].nome;
   }
 
+  const rotuloLinha = a => a.id === "ipca" && real ? "Poder de compra de 2013" : curto[a.id];
   function linhas() {
     const box = document.getElementById("g-linhas");
     box.innerHTML = "";
     const W = Math.max(320, box.clientWidth), H = Math.round(Math.min(520, Math.max(320, W * 0.55)));
-    const m = { l: 64, r: W < 560 ? 12 : 90, t: 12, b: 28 };
+    const m = { l: 64, r: W < 560 ? 12 : 175, t: 12, b: 28 };
+    const rotulos = [];
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Trajetória mensal de R$ 100 mil aplicados em cada ativo" }, box);
     const t0 = Date.parse("2013-11-01"), t1 = Date.parse("2026-12-01");
-    const todos = A.flatMap(a => traj(a).map(p => p[1]));
+    const todos = [...A, PARADO].flatMap(a => traj(a).map(p => p[1]));
     const lo = Math.log10(Math.min(...todos) * 0.9), hi = Math.log10(Math.max(...todos) * 1.1);
     const X = s => m.l + (Date.parse(s) - t0) / (t1 - t0) * (W - m.l - m.r);
     const Y = v => m.t + (hi - Math.log10(v)) / (hi - lo) * (H - m.t - m.b);
@@ -310,13 +333,14 @@
       t.textContent = ano;
     }
     const d = pts => pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
-    const ordem = [...A.filter(a => !["cdi", "ipca", selecionado].includes(a.id)), porId.ipca, porId.cdi, porId[selecionado]];
+    const ordem = [...A.filter(a => !["cdi", "ipca", selecionado].includes(a.id)), porId.ipca, PARADO, porId.cdi, porId[selecionado]];
     for (const a of ordem) {
-      const sel = a.id === selecionado, ref = a.id === "cdi" || a.id === "ipca";
-      const cor = sel ? "var(--verde)" : a.id === "cdi" ? "var(--cdi)" : a.id === "ipca" ? "var(--ipca)" : "var(--outros)";
+      const sel = a.id === selecionado, ref = ["cdi", "ipca", "parado"].includes(a.id);
+      const cor = sel ? "var(--verde)" : a.id === "cdi" ? "var(--cdi)" : a.id === "ipca" ? "var(--ipca)" : a.id === "parado" ? "var(--parado)" : "var(--outros)";
       if (sel) el("path", { d: d(traj(a)), fill: "none", stroke: "var(--cartao)", "stroke-width": 5, "stroke-linejoin": "round" }, svg);
-      const p = el("path", { d: d(traj(a)), fill: "none", stroke: cor, "stroke-width": sel ? 2.5 : ref ? 2 : 1.2,
-        "stroke-linejoin": "round", "stroke-dasharray": a.id === "ipca" ? "5 4" : "none" }, svg);
+      const p = el("path", { d: d(traj(a)), fill: "none", stroke: cor, "stroke-width": sel ? 2.5 : a.id === "parado" ? 2.6 : ref ? 2 : 1.2,
+        "stroke-linejoin": "round", "stroke-linecap": "round",
+        "stroke-dasharray": a.id === "ipca" ? "5 4" : a.id === "parado" ? "0.1 5" : "none" }, svg);
       if (!sel && !ref) {
         p.style.cursor = "pointer";
         const alvo = el("path", { d: d(traj(a)), fill: "none", stroke: "transparent", "stroke-width": 10 }, svg);
@@ -325,9 +349,14 @@
       }
       if ((sel || ref) && W >= 560) {
         const u = traj(a).at(-1);
-        const t = el("text", { x: X(u[0]) + 6, y: Y(u[1]) + 4, "font-size": 12, "font-weight": sel ? 700 : 400 }, svg);
-        t.textContent = curto[a.id] + " " + reais(u[1], true).replace("R$ ", "");
+        rotulos.push({ x: X(u[0]) + 6, y: Y(u[1]) + 4, sel, txt: rotuloLinha(a) + " " + reais(u[1], true).replace("R$ ", "") });
       }
+    }
+    // Rótulos no fim das linhas, afastados para não se sobreporem
+    rotulos.sort((a, b) => a.y - b.y).forEach((r, i, l) => { if (i && r.y < l[i - 1].y + 15) r.y = l[i - 1].y + 15; });
+    for (const r of rotulos) {
+      const t = el("text", { x: r.x, y: r.y, "font-size": 12, "font-weight": r.sel ? 700 : 400 }, svg);
+      t.textContent = r.txt;
     }
     // Cruz e dica
     const cruz = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--suave)", "stroke-width": 1, opacity: 0 }, svg);
@@ -343,8 +372,8 @@
       cruz.setAttribute("x1", xs); cruz.setAttribute("x2", xs); cruz.setAttribute("opacity", .6);
       const vs = valor(porId[selecionado], melhor);
       ponto.setAttribute("cx", xs); ponto.setAttribute("cy", Y(vs[1])); ponto.setAttribute("opacity", 1);
-      const linhasDica = [porId[selecionado], porId.cdi, porId.ipca].map(a => {
-        const v = valor(a, melhor); return v ? `<div class="l"><span>${curto[a.id]}</span><span>${reais(v[1])}</span></div>` : "";
+      const linhasDica = [porId[selecionado], porId.cdi, porId.ipca, PARADO].map(a => {
+        const v = valor(a, melhor); return v ? `<div class="l"><span>${rotuloLinha(a)}</span><span>${reais(v[1])}</span></div>` : "";
       }).join("");
       mostrar(`<b>${melhor.slice(0, 7) === meses.at(-1).slice(0, 7) ? dataBR(melhor) : mesBR(melhor)}</b>${linhasDica}`, ev);
     });
@@ -413,8 +442,8 @@
   });
   document.querySelectorAll("[data-real]").forEach(b => b.onclick = () => {
     real = b.dataset.real === "1";
-    document.querySelectorAll("[data-real]").forEach(x => x.setAttribute("aria-pressed", x === b));
-    barras();
+    document.querySelectorAll("[data-real]").forEach(x => x.setAttribute("aria-pressed", x.dataset.real === b.dataset.real));
+    barras(); linhas();
   });
   tudo(); notas();
   let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => { barras(); linhas(); }, 150); });

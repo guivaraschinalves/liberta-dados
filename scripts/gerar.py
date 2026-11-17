@@ -306,6 +306,7 @@ def main():
 
     escrever_csv(ativos, fator_ipca)
     escrever_xlsx(ativos, resumo)
+    escrever_series(resumo, ativos, ipca)
 
     for a in ativos:
         extra = f"  com proventos R$ {a['hoje_tr']:,.0f}" if a.get("hoje_tr") else ""
@@ -345,6 +346,44 @@ def escrever_csv(ativos, fator_ipca):
         w.writerow(["Dinheiro parado (sem render)", "14/11/2013", CAPITAL, "17/11/2026", CAPITAL, "R$",
                     0, 0, CAPITAL, round(CAPITAL / fator_ipca, 2), "", 0,
                     round((1 / fator_ipca - 1) * 100, 2), "Mesmo valor nominal; perde a inflação do IPCA"])
+
+
+def escrever_series(resumo, ativos, ipca):
+    """Séries temporais para baixar: mensal em reais, mensal descontada a inflação e diária em preços originais."""
+    nomes = [a["nome"] for a in resumo["ativos"]]
+    meses = sorted({p[0][:7] for a in resumo["ativos"] for p in a["trajetoria"]})
+    por_mes = [{p[0][:7]: p[1] for p in a["trajetoria"]} for a in resumo["ativos"]]
+    i0 = ipca[dt.date(2013, 10, 1)]
+
+    def deflator(m):
+        mm = dt.date(int(m[:4]), int(m[5:]), 1)
+        return ipca[max(x for x in ipca if x <= mm)] / i0
+
+    for arq, real in (("serie-mensal.csv", False), ("serie-mensal-descontada-ipca.csv", True)):
+        with open(DADOS / arq, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            unidade = "R$ de 2013, descontado o IPCA" if real else "R$ correntes"
+            w.writerow(["Mês"] + [f"{n} ({unidade})" for n in nomes] + [f"Dinheiro parado ({unidade})"])
+            for m in meses:
+                d = deflator(m) if real else 1.0
+                w.writerow([m] + [round(pm[m] / d, 2) if m in pm else "" for pm in por_mes] + [round(CAPITAL / d, 2)])
+
+    colunas = [("ibov", "serie", "Ibovespa (pontos)"), ("petr4", "serie", "PETR4 (R$)"),
+               ("petr4", "serie_tr", "PETR4 ajustado por proventos (R$)"), ("sp500", "serie", "S&P 500 (pontos)"),
+               ("sp500", "serie_tr", "S&P 500 retorno total (pontos)"), ("nvda", "serie", "NVDA (US$, corrigido por desdobramento)"),
+               ("nvda", "serie_tr", "NVDA ajustado por proventos (US$)"), ("ttwo", "serie", "TTWO (US$)"),
+               ("btc", "serie", "Bitcoin (US$, CoinMetrics, fim do dia UTC)"), ("brent", "serie", "Brent (US$/barril, futuro mais próximo)"),
+               ("dolar", "serie", "Dólar PTAX venda (R$)"), ("cdi", "serie", "CDI (índice, 14/11/2013 = 100)"),
+               ("gasolina", "serie", "Gasolina comum (R$/l, média semanal ANP; data = fim da semana)"),
+               ("ipca", "serie", "IPCA (número-índice, dez/1993 = 100; data = mês)")]
+    por_id = {a["id"]: a for a in ativos}
+    series = [por_id[i].get(c) or {} for i, c, _ in colunas]
+    datas = sorted({d for s_ in series for d in s_ if dt.date(2013, 10, 1) <= d <= FIM})
+    with open(DADOS / "serie-diaria.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Data"] + [c[2] for c in colunas])
+        for d in datas:
+            w.writerow([d.isoformat()] + [round(s_[d], 6) if d in s_ else "" for s_ in series])
 
 
 def escrever_xlsx(ativos, resumo):
