@@ -4,21 +4,100 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>R$ 100 mil de 2013 hoje</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap">
 <style>
-  body { margin: 0; background: #000; color: #9aa1a4; font-family: Arial, sans-serif; }
-  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-  a { display: block; }
+  :root { --verde: #1ed760; --suave: #9aa1a4; --borda: #1d2a26; color-scheme: dark; }
+  body { margin: 0; background: #000; color: #fff; font-family: "Inter", Arial, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; display: grid; gap: 40px; }
+  .graficos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .baixar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: .8rem; }
+  .baixar .tam, .baixar .arq { display: flex; gap: 4px; }
+  .baixar button, .baixar a { font: inherit; color: var(--suave); background: none; border: 1px solid #26322e; border-radius: 999px; padding: 3px 10px; cursor: pointer; text-decoration: none; }
+  .baixar button[aria-pressed="true"] { color: #000; background: var(--verde); border-color: var(--verde); font-weight: 700; }
+  .baixar a:hover, .baixar button:hover { border-color: var(--verde); color: #fff; }
+  .baixar button[aria-pressed="true"]:hover { color: #000; }
   img { width: 100%; height: auto; display: block; }
-  footer { text-align: center; padding: 8px 16px 32px; font-size: 13px; }
-  footer a { display: inline; color: #1ed760; }
+  .tabela { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .86rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--borda); text-align: right; white-space: nowrap; vertical-align: top; }
+  th { font-size: .76rem; color: var(--verde); font-weight: 700; white-space: normal; min-width: 92px; border-bottom-color: #1f4a3d; }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: #000; }
+  td:first-child { font-weight: 700; white-space: normal; min-width: 160px; }
+  td .d { display: block; color: var(--suave); font-size: .74rem; font-weight: 300; }
+  tr.sep td { border-top: 1px solid #1f4a3d; }
+  .neg { color: #ff8a80; }
+  .rodape { color: var(--suave); font-size: .76rem; font-weight: 300; margin-top: 12px; }
+  .rodape a { color: var(--verde); }
 </style>
 </head>
 <body>
 <main>
-  <a href="cards/card-1.png" download="100mil-2013-hoje.png"><img src="cards/card-1.png" alt="R$ 100 mil de 2013, hoje, em reais" width="1080" height="1350"></a>
-  <a href="cards/card-2.png" download="100mil-2013-descontada-inflacao.png"><img src="cards/card-2.png" alt="R$ 100 mil de 2013, hoje, descontada a inflação" width="1080" height="1350"></a>
-  <a href="cards/card-3.png" download="100mil-2013-exterior.png"><img src="cards/card-3.png" alt="R$ 100 mil de 2013, hoje, no exterior" width="1080" height="1350"></a>
+  <div class="graficos" id="graficos"></div>
+  <div>
+    <div class="tabela" id="tabela"></div>
+    <p class="rodape">Rentabilidade passada não é garantia de rentabilidade futura. Sem impostos e custos. · Baixar: <a href="dados/liberta-dados.xlsx" download>XLSX</a> · <a href="dados/comparacao.csv" download>CSV</a></p>
+  </div>
 </main>
-<footer><a href="dados/liberta-dados.xlsx" download>planilha</a></footer>
+<script>
+// Gráficos: escolha de tamanho e download em PNG, JPG ou PDF
+(function () {
+  const tamanhos = [["4x5", "Feed 4:5", 1080, 1350], ["1x1", "1:1", 1080, 1080], ["9x16", "Stories", 1080, 1920], ["16x9", "16:9", 1920, 1080]];
+  const nomes = ["100mil-2013-hoje", "100mil-2013-descontada-inflacao", "100mil-2013-exterior"];
+  const alts = ["R$ 100 mil de 2013, hoje, em reais", "R$ 100 mil de 2013, hoje, descontada a inflação", "R$ 100 mil de 2013, hoje, no exterior"];
+  const caixa = document.getElementById("graficos");
+  [1, 2, 3].forEach(n => {
+    const fig = document.createElement("div");
+    caixa.appendChild(fig);
+    let atual = "4x5";
+    function desenha() {
+      const [id, , w, h] = tamanhos.find(t => t[0] === atual);
+      const base = `cards/card-${n}-${id}`, arq = `${nomes[n - 1]}-${id}`;
+      fig.innerHTML = `<img src="${base}.png" alt="${alts[n - 1]}" width="${w}" height="${h}">
+        <div class="baixar"><div class="tam">${tamanhos.map(t => `<button data-t="${t[0]}" aria-pressed="${t[0] === atual}">${t[1]}</button>`).join("")}</div>
+        <div class="arq">${["png", "jpg", "pdf"].map(e => `<a href="${base}.${e}" download="${arq}.${e}">${e.toUpperCase()}</a>`).join("")}</div></div>`;
+      fig.querySelectorAll("button").forEach(b => b.onclick = () => { atual = b.dataset.t; desenha(); });
+    }
+    desenha();
+  });
+})();
+
+(async function () {
+  const R = await (await fetch("dados/resumo.json", { cache: "no-cache" })).json();
+  const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = x => Math.abs(x) < 5e-4 ? "0%" : (x >= 0 ? "+" : "−") + nf(1).format(Math.abs(x * 100)) + "%";
+  const reais = v => "R$ " + nf(0).format(v);
+  const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
+  const mesBR = s => ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+s.slice(5, 7) - 1] + "/" + s.slice(0, 4);
+  const num = v => v >= 1000 ? nf(0).format(v) : v >= 10 ? nf(2).format(v) : nf(4).format(v);
+  const cl = x => x < 0 ? ' class="neg"' : "";
+  const d0 = a => a.id === "ipca" ? mesBR(a.d0) : a.id === "gasolina" ? `semana até ${dataBR(a.d0)}` : dataBR(a.d0);
+  const d1 = a => a.id === "ipca" ? mesBR(a.d1) : a.id === "gasolina" ? `semana até ${dataBR(a.d1)}` : dataBR(a.d1);
+  const fim = ["ibov", "petr4", "sp500", "nvda", "ttwo"].map(k => R.ativos.find(a => a.id === k).d1).sort().pop();
+  const ordem = ["cdi", "ibov", "petr4", "sp500", "nvda", "ttwo", "btc", "dolar", "brent", "gasolina", "ipca"];
+  const A = ordem.map(k => R.ativos.find(a => a.id === k));
+  const linha = a => `<tr${a.id === "ipca" ? ' class="sep"' : ""}>
+    <td>${a.nome}<span class="d">${a.id === "ipca" ? "valor necessário hoje para manter o poder de compra" : a.unidade}</span></td>
+    <td>${num(a.v0)}<span class="d">${d0(a)}</span></td>
+    <td>${num(a.v1)}<span class="d">${d1(a)}</span></td>
+    <td${cl(a.var_orig)}>${pct(a.var_orig)}</td>
+    <td${cl(a.var_brl)}><b>${pct(a.var_brl)}</b></td>
+    <td><b>${reais(a.hoje)}</b></td>
+    <td>${reais(a.hoje_real)}</td>
+    <td>${a.id === "ipca" ? "—" : `<span${cl(a.real)}>${pct(a.real)}</span>`}</td>
+    <td>${a.hoje_tr ? reais(a.hoje_tr) : "—"}</td></tr>`;
+  const parado = `<tr>
+    <td>Dinheiro parado<span class="d">sem rendimento; perde ${nf(1).format(R.ipca.perda * 100)}% do poder de compra</span></td>
+    <td>${nf(0).format(R.capital)}<span class="d">14/11/2013</span></td>
+    <td>${nf(0).format(R.capital)}<span class="d">${dataBR(fim)}</span></td>
+    <td>0%</td><td><b>0%</b></td><td><b>${reais(R.capital)}</b></td>
+    <td><b class="neg">${reais(R.parado.hoje_real)}</b></td><td><span class="neg">${pct(R.parado.real)}</span></td><td>—</td></tr>`;
+  document.getElementById("tabela").innerHTML = `<table>
+    <thead><tr><th>Ativo/indicador</th><th>Valor em 17/11/2013</th><th>Valor em 17/11/2026</th>
+    <th>Variação na moeda original</th><th>Variação acumulada em reais</th><th>R$ 100 mil de 2013 hoje</th>
+    <th>Em poder de compra de 2013 (descontado o IPCA de ${pct(R.ipca.acumulada)})</th><th>Acima da inflação</th>
+    <th>Com dividendos reinvestidos</th></tr></thead>
+    <tbody>${A.map(linha).join("")}${parado}</tbody></table>`;
+})();
+</script>
 </body>
 </html>

@@ -130,15 +130,11 @@
   </section>
 
   <section class="cartao">
-    <h2>A tabela</h2>
+    <h2>A tabela, com o efeito da inflação</h2>
     <p class="sub">Ativos em dólar: variação do preço em dólar vezes a do câmbio (PTAX de venda) entre as duas datas.</p>
     <div class="tabela" id="tabela"></div>
   </section>
 
-  <section class="cartao">
-    <h2>IPCA: o que a inflação fez com R$ 100 mil</h2>
-    <div class="ipca" id="ipca"></div>
-  </section>
 
   <p class="aviso">Rentabilidade passada não é garantia de rentabilidade futura. Os números são uma simulação educativa, sem impostos, taxas e custos, e não constituem recomendação de investimento.</p>
 
@@ -338,19 +334,26 @@
     const num = v => v >= 1000 ? nf(0).format(v) : v >= 10 ? nf(2).format(v) : nf(4).format(v);
     const cl = x => x < 0 ? ' class="neg"' : "";
     const lin = A.map(a => `<tr>
-      <td>${a.nome}<span class="d">${a.unidade}</span></td>
+      <td>${a.nome}<span class="d">${a.id === "ipca" ? "inflação de " + mesBR("2013-11-01") + " a " + mesBR(a.d1) + "; ao lado, o valor necessário hoje para manter o poder de compra" : a.unidade}</span></td>
       <td>${num(a.v0)}<span class="d">${data(a)}</span></td>
       <td>${num(a.v1)}<span class="d">${data1(a)}</span></td>
       <td${cl(a.var_orig)}>${pct(a.var_orig)}</td>
       <td${cl(a.var_brl)}><b>${pct(a.var_brl)}</b></td>
       <td><b>${reais(a.hoje)}</b></td>
+      <td>${reais(a.hoje_real)}</td>
       <td>${a.id === "ipca" ? "—" : `<span${cl(a.real)}>${pct(a.real)}</span>`}</td>
       <td>${pct(a.ao_ano)}</td>
-      <td>${a.hoje_tr ? reais(a.hoje_tr) : "—"}</td></tr>`).join("");
+      <td>${a.hoje_tr ? reais(a.hoje_tr) : "—"}</td></tr>`).join("") + `<tr>
+      <td>Dinheiro parado<span class="d">sem render nada; perde ${nf(1).format(R.ipca.perda * 100)}% do poder de compra</span></td>
+      <td>${nf(0).format(R.capital)}<span class="d">14/11/2013</span></td>
+      <td>${nf(0).format(R.capital)}<span class="d">${dataBR(fim)}</span></td>
+      <td>0%</td><td><b>0%</b></td><td><b>${reais(R.capital)}</b></td>
+      <td><b class="neg">${reais(R.parado.hoje_real)}</b></td>
+      <td><span class="neg">${pct(R.parado.real)}</span></td><td>0%</td><td>—</td></tr>`;
     document.getElementById("tabela").innerHTML = `<table>
       <thead><tr><th>Ativo/indicador</th><th>Valor em 17/11/2013</th><th>Valor em 17/11/2026</th>
       <th>Variação na moeda original</th><th>Variação acumulada em reais</th><th>R$ 100 mil de 2013 hoje</th>
-      <th>Acima do IPCA</th><th>Ao ano</th><th>Com proventos reinvestidos</th></tr></thead><tbody>${lin}</tbody></table>`;
+      <th>Em poder de compra de 2013 (descontado o IPCA)</th><th>Acima do IPCA</th><th>Ao ano</th><th>Com proventos reinvestidos</th></tr></thead><tbody>${lin}</tbody></table>`;
   }
 
   function ipca() {
@@ -384,7 +387,7 @@
     document.querySelectorAll("[data-modo]").forEach(x => x.setAttribute("aria-pressed", x === b));
     barras(); linhas(); tiles();
   });
-  tudo(); ipca(); notas();
+  tudo(); notas();
   let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => { barras(); linhas(); }, 150); });
 })();
 </script>

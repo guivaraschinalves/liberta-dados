@@ -9,15 +9,15 @@
   /* Um gráfico por vez: cards.html?card=1..3. 1080×1350 (Instagram 4:5). */
   :root { --verde: #1ed760; --cinza: #6f777b; --suave: #9aa1a4; }
   * { box-sizing: border-box; margin: 0; }
-  html, body { width: 1080px; height: 1350px; overflow: hidden; background: #000; }
+  html, body { width: var(--w); height: var(--h); overflow: hidden; background: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: "Inter", Arial, sans-serif; color: #fff; }
-  .card { width: 1080px; height: 1350px; padding: 96px 84px 64px; display: flex; flex-direction: column;
+  .card { width: var(--w); height: var(--h); padding: 96px 84px 64px; display: flex; flex-direction: column;
     background: radial-gradient(80% 55% at 100% 0%, rgba(30,215,96,.30) 0%, rgba(0,52,42,.35) 35%, rgba(0,0,0,0) 70%), #000; }
   h1 { font-size: 58px; line-height: 1.08; font-weight: 800; letter-spacing: -.025em; }
   h1 em { font-style: normal; color: var(--verde); }
-  .sub { font-size: 26px; font-weight: 300; color: var(--suave); margin-top: 14px; }
+  .sub { font-size: 24px; font-weight: 300; color: var(--suave); }
   .graf { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-  .barras { position: relative; display: grid; gap: 34px; }
+  .barras { position: relative; display: grid; gap: var(--gap, 34px); }
   .nome { display: flex; justify-content: space-between; align-items: baseline; font-size: 28px; font-weight: 400; }
   .nome b { font-weight: 700; font-variant-numeric: tabular-nums; }
   .barra { height: 20px; margin-top: 10px; border-radius: 4px; background: var(--verde); }
@@ -34,7 +34,13 @@
   const R = await (await fetch("dados/resumo.json", { cache: "no-cache" })).json();
   const A = Object.fromEntries(R.ativos.map(a => [a.id, a]));
   A.parado = R.parado;
-  const n = +(new URLSearchParams(location.search).get("card") || 1);
+  const q = new URLSearchParams(location.search);
+  const n = +(q.get("card") || 1), LW = +(q.get("w") || 1080), LH = +(q.get("h") || 1350);
+  const raiz = document.documentElement.style;
+  raiz.setProperty("--w", LW + "px"); raiz.setProperty("--h", LH + "px");
+  const pagina = document.createElement("style");
+  pagina.textContent = `@page { size: ${LW}px ${LH}px; margin: 0; }`;
+  document.head.appendChild(pagina);
   const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
   const reais = v => v >= 1e6 ? "R$ " + nf(1).format(v / 1e6) + " mi" : "R$ " + nf(v < 1e5 ? 1 : 0).format(v / 1e3) + " mil";
   const data = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
@@ -43,7 +49,7 @@
                   parado: "Dinheiro parado", nvda: "Nvidia", btc: "Bitcoin", ttwo: "Take-Two", sp500: "S&P 500" };
 
   function grafico(ids, chave, marco) {
-    const W = 912, max = Math.max(...ids.map(k => A[k][chave]));
+    const W = LW - 168, max = Math.max(...ids.map(k => A[k][chave]));
     const linhas = ids.map(k => `<div><div class="nome">${nomes[k]}<b>${reais(A[k][chave])}</b></div>
       <div class="barra ${k === "parado" ? "parado" : ""}" style="width:${Math.max(4, A[k][chave] / max * W)}px"></div></div>`).join("");
     const m = marco ? `<div class="marco" style="left:${marco[0] / max * W}px"><span>${marco[1]}</span></div>` : "";
@@ -52,17 +58,20 @@
   const rodape = t => `<div class="rodape">${t} De 14/11/2013 a ${data(fim)}. Rentabilidade passada não é garantia de rentabilidade futura.</div>`;
   const br = ["cdi", "ibov", "dolar", "gasolina", "petr4", "brent", "parado"];
   let h = "";
-  if (n === 1) h = `<h1>R$ 100 mil de 2013, <em>hoje</em></h1><p class="sub">Em reais</p>
+  if (n === 1) h = `<p class="sub">Em reais</p>
     ${grafico(br, "hoje", [R.ipca.necessario, "inflação"])}
     ${rodape("Fontes: Banco Central, B3, ANP, IBGE.")}`;
-  if (n === 2) h = `<h1>R$ 100 mil de 2013, hoje, <em>descontada a inflação</em></h1><p class="sub">Em reais de 2013, corrigidos pelo IPCA</p>
+  if (n === 2) h = `<p class="sub">Em reais de 2013, corrigidos pelo IPCA</p>
     ${grafico(br, "hoje_real", [R.capital, "poder de compra de 2013"])}
     ${rodape("Fontes: Banco Central, B3, ANP, IBGE.")}`;
-  if (n === 3) h = `<h1>R$ 100 mil de 2013, hoje: <em>no exterior</em></h1><p class="sub">Em reais, com a variação do dólar</p>
+  if (n === 3) h = `<p class="sub">Em reais, com a variação do dólar</p>
     ${grafico(["nvda", "btc", "ttwo", "sp500"], "hoje")}
     ${rodape("Fontes: Yahoo Finance, CoinMetrics, Banco Central.")}`;
   document.getElementById("card").innerHTML = h;
   await document.fonts.ready;
+  // Encolhe o espaço entre as barras até o gráfico caber no formato escolhido
+  const graf = document.querySelector(".graf"), barras = document.querySelector(".barras");
+  for (let g = 34; g >= 6 && barras.offsetHeight + 60 > graf.clientHeight; g -= 2) raiz.setProperty("--gap", g + "px");
 })();
 </script>
 </body>
