@@ -6,85 +6,96 @@
 <title>R$ 100 mil de 2013 hoje</title>
 <meta name="description" content="Quanto valem hoje R$ 100 mil aplicados em 17/11/2013 em CDI, Ibovespa, Petrobras, S&P 500, Nvidia, Take-Two, bitcoin, dólar, Brent e gasolina, contra o IPCA.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap">
 <style>
+  /* Identidade Liberta (brandbook): preto, verde #1ED760, verdes-escuros #00342A/#00231B, cinza #29292A, Inter. */
   :root {
-    --bg: #f6f6f4; --cartao: #ffffff; --fg: #1c1e21; --suave: #5d636b; --borda: #dcdcd8; --grade: #e7e7e3;
-    --azul: #4F81BD; --azul-escuro: #1F497D; --azul-claro: #8EB4E3; --vermelho: #C0504D; --cinza: #b9b9b4;
-    --texto: "Lato", "Helvetica Neue", Arial, sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #131518; --cartao: #1b1e22; --fg: #eceef0; --suave: #a2a8b0; --borda: #2e3238; --grade: #262a2f;
-      --azul: #6f9bd1; --azul-escuro: #a9c4e6; --azul-claro: #5d7fa8; --vermelho: #e0726f; --cinza: #4a4e54;
-      color-scheme: dark;
-    }
+    --bg: #000000; --cartao: #0b0f0e; --cartao2: #00231b; --fg: #ffffff; --suave: #a7adb0; --borda: #1d2a26; --grade: #18201e;
+    --verde: #1ed760; --verde-escuro: #00342a; --hipo: #00342a; --cdi: #ffffff; --ipca: #8f979c; --outros: #3a4044;
+    --texto: "Inter", "Helvetica Neue", Arial, sans-serif;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--texto); font-size: 16px; line-height: 1.55; }
-  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 28px; }
-  header { display: grid; gap: 10px; }
-  h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.2; margin: 0; font-weight: 900; text-wrap: balance; }
-  h2 { font-size: 1.15rem; margin: 0; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--texto); font-size: 16px; line-height: 1.55; font-weight: 400; }
+  .topo { background: radial-gradient(120% 140% at 100% 0%, rgba(30,215,96,.55) 0%, rgba(0,52,42,.55) 30%, rgba(0,0,0,0) 62%), #000; }
+  main { max-width: 1000px; margin: 0 auto; padding: 0 16px 64px; display: grid; gap: 28px; }
+  .marca { display: flex; justify-content: space-between; align-items: end; gap: 12px; padding: 22px 0 10px; font-size: .92rem;
+    border-bottom: 1px solid transparent; border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; }
+  header { display: grid; gap: 14px; padding: 40px 0 8px; }
+  h1 { font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.08; margin: 0; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+  h1 em, h2 em { font-style: normal; color: var(--verde); }
+  h2 { font-size: 1.25rem; margin: 0; font-weight: 700; letter-spacing: -.01em; }
   p { margin: 0; max-width: 72ch; }
-  .sub { color: var(--suave); }
-  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
-  .baixar { display: flex; flex-wrap: wrap; gap: 8px; }
-  .baixar a, .botao { font: inherit; font-size: .92rem; color: var(--fg); background: var(--cartao); border: 1px solid var(--borda);
-    border-radius: 999px; padding: 6px 14px; text-decoration: none; cursor: pointer; }
-  .baixar a:hover, .botao:hover { border-color: var(--azul); }
-  .botao[aria-pressed="true"] { background: var(--azul-escuro); border-color: var(--azul-escuro); color: #fff; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .botao[aria-pressed="true"] { color: #131518; } }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .tile { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 14px 16px; }
-  .tile .n { font-size: 1.7rem; font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; }
-  .tile .r { color: var(--suave); font-size: .9rem; }
+  .sub { color: var(--suave); font-weight: 300; }
+  header .sub { font-size: 1.1rem; color: #d7dbdd; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 22px; display: grid; gap: 14px; min-width: 0; }
+  .baixar { display: flex; flex-wrap: wrap; gap: 10px; }
+  .baixar a { font: inherit; font-size: .95rem; font-weight: 700; color: #000; background: var(--verde); border-radius: 999px; padding: 9px 18px; text-decoration: none; }
+  .baixar a.sec { background: transparent; color: var(--fg); border: 1px solid var(--verde); font-weight: 400; }
+  .baixar a:hover { filter: brightness(1.1); }
+  .botao { font: inherit; font-size: .9rem; color: var(--fg); background: transparent; border: 1px solid #3a4a45;
+    border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+  .botao:hover { border-color: var(--verde); }
+  .botao[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #000; font-weight: 700; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .tile { background: var(--cartao2); border: 1px solid #0d3a2e; border-radius: 14px; padding: 16px 18px; }
+  .tile .n { font-size: 1.85rem; font-weight: 800; line-height: 1.1; color: var(--verde); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .tile .r { color: #cfd4d6; font-size: .9rem; font-weight: 300; margin-top: 4px; }
   .controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .controles .rot { color: var(--suave); font-size: .9rem; margin-right: 4px; }
-  .legenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .88rem; color: var(--suave); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .86rem; color: var(--suave); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
-  .legenda i.linha { height: 0; border-top: 2px dashed var(--vermelho); border-radius: 0; }
-  .legenda i.linha.cheia { border-top: 2.5px solid var(--azul-escuro); }
+  .legenda i.vazado { background: var(--hipo); box-shadow: inset 0 0 0 1.5px var(--verde); }
+  .legenda i.linha { height: 0; border-top: 2px dashed var(--ipca); border-radius: 0; }
+  .legenda i.linha.cheia { border-top: 2.5px solid var(--cdi); }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
   svg text { font-family: var(--texto); fill: var(--fg); }
   .eixo text { fill: var(--suave); font-size: 12px; }
   .grade line { stroke: var(--grade); }
   .graf { position: relative; }
-  .dica { position: absolute; pointer-events: none; background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px;
-    padding: 8px 10px; font-size: .85rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); min-width: 170px; display: none; z-index: 2; }
-  .dica b { display: block; margin-bottom: 2px; }
+  .dica { position: absolute; pointer-events: none; background: #0f1a17; color: var(--fg); border: 1px solid #1f4a3d; border-radius: 10px;
+    padding: 8px 10px; font-size: .85rem; box-shadow: 0 6px 18px rgba(0,0,0,.5); min-width: 170px; display: none; z-index: 2; font-family: var(--texto); }
+  .dica b { display: block; margin-bottom: 2px; color: var(--verde); }
   .dica .l { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chips .botao { padding: 4px 11px; font-size: .85rem; }
   .tabela { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-size: .88rem; font-variant-numeric: tabular-nums; }
-  th, td { padding: 7px 8px; border-bottom: 1px solid var(--borda); text-align: right; white-space: nowrap; vertical-align: top; }
-  th { font-size: .8rem; color: var(--suave); font-weight: 700; white-space: normal; min-width: 90px; }
+  th, td { padding: 8px 8px; border-bottom: 1px solid var(--borda); text-align: right; white-space: nowrap; vertical-align: top; }
+  th { font-size: .78rem; color: var(--verde); font-weight: 700; white-space: normal; min-width: 90px; border-bottom-color: #1f4a3d; }
   th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--cartao); }
   td:first-child { font-weight: 700; white-space: normal; min-width: 150px; }
-  td .d { display: block; color: var(--suave); font-size: .78rem; }
-  .neg { color: var(--vermelho); }
-  .ipca { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-  .ipca > div { border-left: 3px solid var(--vermelho); padding-left: 10px; }
-  .ipca .n { font-size: 1.35rem; font-weight: 900; }
+  td .d { display: block; color: var(--suave); font-size: .76rem; font-weight: 300; }
+  .neg { color: #ff8a80; }
+  .ipca { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .ipca > div { border-left: 2px solid var(--verde); padding-left: 12px; }
+  .ipca .n { font-size: 1.45rem; font-weight: 800; }
   .notas { font-size: .9rem; color: var(--suave); display: grid; gap: 8px; }
-  .notas p { max-width: 90ch; }
+  .notas p { max-width: 90ch; font-weight: 300; }
   #notas { display: grid; gap: 8px; }
   .rotulo { paint-order: stroke; stroke: var(--cartao); stroke-width: 4px; stroke-linejoin: round; }
-  footer { color: var(--suave); font-size: .82rem; }
+  .aviso { max-width: none; border: 1px solid var(--verde); border-radius: 14px; padding: 14px 18px; font-size: .9rem; color: #d7dbdd; }
+  footer { color: var(--suave); font-size: .82rem; font-weight: 300; border-top: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; padding-top: 14px; }
+  footer a { color: var(--verde); }
 </style>
 </head>
 <body>
-<main>
+<div class="topo">
+<main style="padding-bottom:36px">
+  <div class="marca"><span>Liberta Investimentos</span><span class="sub">Educação financeira</span></div>
   <header>
-    <h1>R$ 100 mil aplicados em 17/11/2013: quanto valem em 17/11/2026</h1>
+    <h1>R$ 100 mil aplicados em 17/11/2013: <em>quanto valem em 17/11/2026</em></h1>
     <p class="sub" id="sub">Valor em reais de hoje de cada aplicação, para quem trocou reais por dólares quando o ativo era cotado lá fora.</p>
     <div class="baixar">
       <a href="dados/liberta-dados.xlsx" download>Baixar planilha (.xlsx)</a>
-      <a href="dados/comparacao.csv" download>Baixar tabela (.csv)</a>
+      <a href="dados/comparacao.csv" download class="sec">Baixar tabela (.csv)</a>
     </div>
   </header>
+</main>
+</div>
+<main>
 
   <section class="tiles" id="tiles" aria-label="Destaques"></section>
 
@@ -97,10 +108,10 @@
       <button class="botao" data-modo="tr" aria-pressed="false">Com proventos reinvestidos</button>
     </div>
     <div class="legenda">
-      <span><i style="background:var(--azul)"></i>Investimento</span>
-      <span><i style="background:var(--azul-claro)"></i>Preço de produto (simulação hipotética)</span>
-      <span><i style="background:var(--vermelho)"></i>IPCA</span>
-      <span><i class="linha"></i>Empata com a inflação</span>
+      <span><i style="background:var(--verde)"></i>Investimento</span>
+      <span><i class="vazado"></i>Preço de produto (simulação hipotética)</span>
+      <span><i style="background:var(--ipca)"></i>IPCA</span>
+      <span><i class="linha"></i>Empata com a inflação (IPCA)</span>
     </div>
     <div class="graf" id="g-barras"></div>
   </section>
@@ -110,10 +121,10 @@
     <p class="sub">Escolha um ativo para destacar. CDI e IPCA ficam sempre à vista como referência; escala logarítmica.</p>
     <div class="chips" id="chips"></div>
     <div class="legenda">
-      <span><i style="background:var(--azul)"></i><span id="leg-sel">Ativo escolhido</span></span>
+      <span><i style="background:var(--verde)"></i><span id="leg-sel">Ativo escolhido</span></span>
       <span><i class="linha cheia"></i>CDI</span>
       <span><i class="linha"></i>IPCA</span>
-      <span><i style="background:var(--cinza)"></i>Demais</span>
+      <span><i style="background:var(--outros)"></i>Demais</span>
     </div>
     <div class="graf" id="g-linhas"></div>
   </section>
@@ -128,6 +139,8 @@
     <h2>IPCA: o que a inflação fez com R$ 100 mil</h2>
     <div class="ipca" id="ipca"></div>
   </section>
+
+  <p class="aviso">Rentabilidade passada não é garantia de rentabilidade futura. Os números são uma simulação educativa, sem impostos, taxas e custos, e não constituem recomendação de investimento.</p>
 
   <section class="cartao notas">
     <h2 style="color:var(--fg)">Como foi calculado</h2>
@@ -218,11 +231,11 @@
     lista.forEach((a, i) => {
       const y = topo + i * lin;
       const v = hoje(a);
-      const cor = a.id === "ipca" ? "var(--vermelho)" : a.tipo.startsWith("Preço") ? "var(--azul-claro)" : "var(--azul)";
+      const cor = a.id === "ipca" ? "var(--ipca)" : a.tipo.startsWith("Preço") ? "var(--hipo)" : "var(--verde)";
       const n = el("text", { x: x0, y: y + 12, "font-size": 13, "font-weight": 700, class: "rotulo" }, svg);
       n.textContent = a.nome + (modo === "tr" && a.hoje_tr ? " · com proventos" : "");
       const a0 = X(Math.min(v, R.capital)), a1 = X(Math.max(v, R.capital));
-      el("rect", { x: a0, y: y + 18, width: Math.max(2, a1 - a0), height: 16, rx: 3, fill: cor }, svg);
+      el("rect", { x: a0, y: y + 18, width: Math.max(2, a1 - a0), height: 16, rx: 3, fill: cor, stroke: a.tipo.startsWith("Preço") ? "var(--verde)" : "none", "stroke-width": 1.5 }, svg);
       const val = el("text", { x: a1 + 6, y: y + 31, "font-size": 13 }, svg);
       val.textContent = `${reais(v, true)} · ${vezes(v)}`;
       const alvo = el("rect", { x: 0, y: y, width: W, height: lin, fill: "transparent" }, svg);
@@ -234,10 +247,10 @@
       alvo.addEventListener("mouseleave", esconder);
     });
     const xi = X(R.ipca.necessario);
-    el("line", { x1: xi, x2: xi, y1: topo - 10, y2: H - base + 2, stroke: "var(--vermelho)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, svg);
-    const ti = el("text", { x: xi + 4, y: topo - 12, "font-size": 11.5, fill: "var(--vermelho)" }, svg);
+    el("line", { x1: xi, x2: xi, y1: topo - 10, y2: H - base + 2, stroke: "var(--ipca)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, svg);
+    const ti = el("text", { x: xi + 4, y: topo - 12, "font-size": 11.5, fill: "var(--ipca)" }, svg);
     ti.textContent = "empata com o IPCA";
-    ti.style.fill = "var(--vermelho)";
+    ti.style.fill = "var(--ipca)";
   }
 
   // Linhas
@@ -280,7 +293,7 @@
     const ordem = [...A.filter(a => !["cdi", "ipca", selecionado].includes(a.id)), porId.ipca, porId.cdi, porId[selecionado]];
     for (const a of ordem) {
       const sel = a.id === selecionado, ref = a.id === "cdi" || a.id === "ipca";
-      const cor = sel ? "var(--azul)" : a.id === "cdi" ? "var(--azul-escuro)" : a.id === "ipca" ? "var(--vermelho)" : "var(--cinza)";
+      const cor = sel ? "var(--verde)" : a.id === "cdi" ? "var(--cdi)" : a.id === "ipca" ? "var(--ipca)" : "var(--outros)";
       if (sel) el("path", { d: d(traj(a)), fill: "none", stroke: "var(--cartao)", "stroke-width": 5, "stroke-linejoin": "round" }, svg);
       const p = el("path", { d: d(traj(a)), fill: "none", stroke: cor, "stroke-width": sel ? 2.5 : ref ? 2 : 1.2,
         "stroke-linejoin": "round", "stroke-dasharray": a.id === "ipca" ? "5 4" : "none" }, svg);
@@ -298,7 +311,7 @@
     }
     // Cruz e dica
     const cruz = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--suave)", "stroke-width": 1, opacity: 0 }, svg);
-    const ponto = el("circle", { r: 4.5, fill: "var(--azul)", stroke: "var(--cartao)", "stroke-width": 2, opacity: 0 }, svg);
+    const ponto = el("circle", { r: 4.5, fill: "var(--verde)", stroke: "var(--cartao)", "stroke-width": 2, opacity: 0 }, svg);
     const area = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
     const meses = traj(porId[selecionado]).map(p => p[0]);
     const valor = (a, s) => { const pts = traj(a); let v = null; for (const p of pts) { if (p[0].slice(0, 7) <= s.slice(0, 7)) v = p; else break; } return v; };

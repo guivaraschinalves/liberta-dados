@@ -354,7 +354,7 @@ def escrever_xlsx(ativos, resumo):
     fonte = Font(name="Arial", size=10)
     negr = Font(name="Arial", size=10, bold=True)
     azul = Font(name="Arial", size=10, color="0000FF")
-    cab = PatternFill("solid", fgColor="1F497D")
+    cab = PatternFill("solid", fgColor="00342A")
     fina = Side(style="thin", color="BFBFBF")
 
     ws["A1"] = "R$ 100 mil investidos em 17/11/2013: quanto valem em 17/11/2026"
@@ -368,7 +368,7 @@ def escrever_xlsx(ativos, resumo):
         ws[c].font = negr
     for c in ("B3", "B4"):
         ws[c].font = azul
-        ws[c].fill = PatternFill("solid", fgColor="FFFF00")
+        ws[c].fill = PatternFill("solid", fgColor="C8F5D8")
     ws["B3"].number_format = '"R$" #,##0'
     ws["C3"] = "← mude aqui o valor aplicado; as colunas K, L, N e P se refazem"
     ws["C3"].font = Font(name="Arial", size=9, italic=True, color="595959")
