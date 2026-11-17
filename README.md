@@ -2,7 +2,8 @@
 
 Quanto valem em 17/11/2026 R$ 100 mil aplicados em 17/11/2013 em CDI, Ibovespa, Petrobras (PETR4), S&P 500, Nvidia, Take-Two, bitcoin, dólar, Brent e gasolina, contra o IPCA.
 
-- Página: https://guivaraschinalves.github.io/liberta-dados/
+- Página: https://guivaraschinalves.github.io/liberta-dados/ (carrossel do Instagram) e `completo.html` (gráficos interativos)
+- Cards 1080×1350: [`cards/`](cards/), gerados por `scripts/cards.sh` a partir de `cards.html`
 - Planilha: [`dados/liberta-dados.xlsx`](dados/liberta-dados.xlsx) (as colunas calculadas são fórmulas; mude o capital em `B3`)
 - Tabela em texto: [`dados/comparacao.csv`](dados/comparacao.csv)
 
