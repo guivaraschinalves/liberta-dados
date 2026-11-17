@@ -112,11 +112,16 @@
 
   <section class="cartao">
     <h2>Valor hoje de R$ 100 mil aplicados em 2013</h2>
-    <p class="sub">Escala logarítmica: cada marca do eixo multiplica o valor por 10. A barra parte dos R$ 100 mil aplicados.</p>
+    <p class="sub" id="sub-barras"></p>
     <div class="controles">
       <span class="rot">Valores:</span>
       <button class="botao" data-real="0" aria-pressed="true">Em reais de hoje</button>
       <button class="botao" data-real="1" aria-pressed="false">Descontada a inflação</button>
+    </div>
+    <div class="controles">
+      <span class="rot">Escala:</span>
+      <button class="botao" data-escala-b="normal" aria-pressed="true">Normal</button>
+      <button class="botao" data-escala-b="log" aria-pressed="false">Logarítmica</button>
     </div>
     <div class="controles">
       <span class="rot">Ações:</span>
@@ -135,11 +140,16 @@
 
   <section class="cartao">
     <h2>Trajetória de R$ 100 mil, mês a mês, em reais</h2>
-    <p class="sub">Escolha um ativo para destacar. CDI, IPCA e dinheiro parado ficam sempre à vista; escala logarítmica.</p>
+    <p class="sub">Escolha um ativo para destacar. CDI, IPCA e dinheiro parado ficam sempre à vista. Na escala logarítmica, a mesma inclinação é o mesmo rendimento percentual.</p>
     <div class="controles">
       <span class="rot">Valores:</span>
       <button class="botao" data-real="0" aria-pressed="true">Em reais de hoje</button>
       <button class="botao" data-real="1" aria-pressed="false">Descontada a inflação</button>
+    </div>
+    <div class="controles">
+      <span class="rot">Escala:</span>
+      <button class="botao" data-escala-l="normal" aria-pressed="false">Normal</button>
+      <button class="botao" data-escala-l="log" aria-pressed="true">Logarítmica</button>
     </div>
     <div class="chips" id="chips"></div>
     <div class="legenda">
@@ -188,7 +198,15 @@
   const A = R.ativos;
   const porId = Object.fromEntries(A.map(a => [a.id, a]));
   const svgNS = "http://www.w3.org/2000/svg";
-  let modo = "preco", selecionado = "nvda", real = false;
+  let modo = "preco", selecionado = "nvda", real = false, escalaB = "normal", escalaL = "log";
+  // Marcas "redondas" para eixo linear de 0 a max
+  function marcasLin(max) {
+    const bruto = max / 5, p = 10 ** Math.floor(Math.log10(bruto)), n = bruto / p;
+    const passo = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p, t = [];
+    for (let v = 0; v <= max * 1.0001; v += passo) t.push(v);
+    return t;
+  }
+  const rotEixo = (v, rs) => v === 0 ? (rs ? "R$ 0" : "0") : (rs ? "R$ " : "") + (v >= 1e6 ? nf(v % 1e6 ? 1 : 0).format(v / 1e6) + " mi" : nf(0).format(v / 1e3) + " mil");
 
   const nf = (d, min = d) => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: min, maximumFractionDigits: d });
   const pct = (x, d = 1) => (x >= 0 ? "+" : "−") + nf(d).format(Math.abs(x * 100)) + "%";
@@ -255,16 +273,20 @@
     const lista = [...A, parado].filter(a => !(real && a.id === "ipca")).sort((x, y) => vb(y) - vb(x));
     const H = topo + lista.length * lin + base;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
-      "aria-label": "Valor hoje de R$ 100 mil aplicados em 2013, por ativo, em escala logarítmica" }, box);
-    const lo = Math.log10(Math.min(1e5, ...lista.map(vb)) * 0.9), hi = Math.log10(Math.max(...lista.map(vb)) * 1.05);
+      "aria-label": "Valor hoje de R$ 100 mil aplicados em 2013, por ativo" }, box);
+    const logB = escalaB === "log", maxB = Math.max(...lista.map(vb));
+    const lo = Math.log10(Math.min(1e5, ...lista.map(vb)) * 0.9), hi = Math.log10(maxB * 1.05);
     const x0 = 4, x1 = W - (W < 560 ? 92 : 150);
-    const X = v => x0 + (Math.log10(v) - lo) / (hi - lo) * (x1 - x0);
+    const X = logB ? v => x0 + (Math.log10(v) - lo) / (hi - lo) * (x1 - x0) : v => x0 + v / (maxB * 1.02) * (x1 - x0);
+    document.getElementById("sub-barras").textContent = logB
+      ? "Escala logarítmica: cada marca do eixo multiplica o valor por 10. A barra parte dos R$ 100 mil aplicados."
+      : "Escala normal: o comprimento da barra é proporcional ao valor. Na escala logarítmica dá para comparar os menores.";
     const gG = el("g", { class: "grade" }, svg), gE = el("g", { class: "eixo" }, svg);
-    for (let e = 5; e <= 9; e++) {
-      const v = 10 ** e; if (Math.log10(v) > hi) break;
+    const marcasB = logB ? [1e5, 1e6, 1e7, 1e8, 1e9].filter(v => Math.log10(v) <= hi) : marcasLin(maxB);
+    for (const v of marcasB) {
       el("line", { x1: X(v), x2: X(v), y1: topo - 6, y2: H - base + 2 }, gG);
       const t = el("text", { x: X(v), y: H - 6, "text-anchor": "middle" }, gE);
-      t.textContent = v >= 1e6 ? `R$ ${v / 1e6} mi` : `R$ ${v / 1e3} mil`;
+      t.textContent = rotEixo(v, true);
     }
     lista.forEach((a, i) => {
       const y = topo + i * lin;
@@ -272,7 +294,7 @@
       const cor = a.id === "ipca" ? "var(--ipca)" : a.id === "parado" ? "var(--cartao)" : a.tipo.startsWith("Preço") ? "var(--hipo)" : "var(--verde)";
       const n = el("text", { x: x0, y: y + 12, "font-size": 13, "font-weight": 700, class: "rotulo" }, svg);
       n.textContent = a.nome + (modo === "tr" && a.hoje_tr ? " · com proventos" : "");
-      const a0 = X(Math.min(v, R.capital)), a1 = X(Math.max(v, R.capital));
+      const a0 = logB ? X(Math.min(v, R.capital)) : x0, a1 = logB ? X(Math.max(v, R.capital)) : X(v);
       el("rect", { x: a0, y: y + 18, width: Math.max(2, a1 - a0), height: 16, rx: 3, fill: cor, stroke: a.id === "parado" ? "var(--parado)" : a.tipo.startsWith("Preço") ? "var(--verde)" : "none", "stroke-width": 1.5 }, svg);
       const val = el("text", { x: a1 + 6, y: y + 31, "font-size": 13 }, svg);
       val.textContent = `${reais(v, true)} · ${pct(v / R.capital - 1)}`;
@@ -318,15 +340,16 @@
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Trajetória mensal de R$ 100 mil aplicados em cada ativo" }, box);
     const t0 = Date.parse("2013-11-01"), t1 = Date.parse("2026-12-01");
     const todos = [...A, PARADO].flatMap(a => traj(a).map(p => p[1]));
-    const lo = Math.log10(Math.min(...todos) * 0.9), hi = Math.log10(Math.max(...todos) * 1.1);
+    const logL = escalaL === "log", maxL = Math.max(...todos);
+    const lo = Math.log10(Math.min(...todos) * 0.9), hi = Math.log10(maxL * 1.1);
     const X = s => m.l + (Date.parse(s) - t0) / (t1 - t0) * (W - m.l - m.r);
-    const Y = v => m.t + (hi - Math.log10(v)) / (hi - lo) * (H - m.t - m.b);
+    const Y = logL ? v => m.t + (hi - Math.log10(v)) / (hi - lo) * (H - m.t - m.b) : v => m.t + (1 - v / (maxL * 1.04)) * (H - m.t - m.b);
     const gG = el("g", { class: "grade" }, svg), gE = el("g", { class: "eixo" }, svg);
-    for (let e = 4; e <= 9; e++) for (const k of [1, 3]) {
-      const v = k * 10 ** e; if (Math.log10(v) < lo || Math.log10(v) > hi) continue;
+    const marcasL = logL ? [1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7, 3e7, 1e8, 3e8, 1e9].filter(v => Math.log10(v) >= lo && Math.log10(v) <= hi) : marcasLin(maxL);
+    for (const v of marcasL) {
       el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v) }, gG);
       const t = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, gE);
-      t.textContent = v >= 1e6 ? `${v / 1e6} mi` : `${v / 1e3} mil`;
+      t.textContent = rotEixo(v, false);
     }
     for (let ano = 2014; ano <= 2026; ano += (W < 560 ? 3 : 2)) {
       const t = el("text", { x: X(`${ano}-01-01`), y: H - 8, "text-anchor": "middle" }, gE);
@@ -439,6 +462,16 @@
     modo = b.dataset.modo;
     document.querySelectorAll("[data-modo]").forEach(x => x.setAttribute("aria-pressed", x === b));
     barras(); linhas();
+  });
+  document.querySelectorAll("[data-escala-b]").forEach(b => b.onclick = () => {
+    escalaB = b.dataset.escalaB;
+    document.querySelectorAll("[data-escala-b]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    barras();
+  });
+  document.querySelectorAll("[data-escala-l]").forEach(b => b.onclick = () => {
+    escalaL = b.dataset.escalaL;
+    document.querySelectorAll("[data-escala-l]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    linhas();
   });
   document.querySelectorAll("[data-real]").forEach(b => b.onclick = () => {
     real = b.dataset.real === "1";
