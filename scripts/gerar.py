@@ -250,6 +250,7 @@ def main():
         a["hoje"] = CAPITAL * (1 + a["var_brl"])
         a["ao_ano"] = (1 + a["var_brl"]) ** (1 / ANOS) - 1
         a["real"] = (1 + a["var_brl"]) / fator_ipca - 1
+        a["hoje_real"] = a["hoje"] / fator_ipca
         if a.get("tr"):
             a["hoje_tr"] = CAPITAL * a["tr"] * camb
             a["var_brl_tr"] = a["tr"] * camb - 1
@@ -296,13 +297,14 @@ def main():
     resumo = dict(
         gerado=dt.datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M"),
         capital=CAPITAL, anos=ANOS, fator_ipca=fator_ipca,
+        parado=dict(hoje=CAPITAL, hoje_real=CAPITAL / fator_ipca, real=1 / fator_ipca - 1),
         ipca=dict(acumulada=fator_ipca - 1, poder_compra=CAPITAL / fator_ipca,
                   necessario=CAPITAL * fator_ipca, perda=1 - 1 / fator_ipca,
                   mes0="nov/2013", mes1=f_ipca["d1"].isoformat()),
         ativos=saida_ativos)
     (DADOS / "resumo.json").write_text(json.dumps(resumo, ensure_ascii=False, separators=(",", ":")))
 
-    escrever_csv(ativos)
+    escrever_csv(ativos, fator_ipca)
     escrever_xlsx(ativos, resumo)
 
     for a in ativos:
@@ -325,20 +327,24 @@ def rotulo_data(a, qual):
     return br(d)
 
 
-def escrever_csv(ativos):
+def escrever_csv(ativos, fator_ipca):
     with open(DADOS / "comparacao.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Ativo/indicador", "Data de referência inicial", "Valor em 17/11/2013",
                     "Data de referência final", "Valor em 17/11/2026", "Unidade",
                     "Variação na moeda original (%)", "Variação acumulada em reais (%)",
-                    "R$ 100 mil de 2013 valeriam hoje (R$)", "Com proventos reinvestidos (R$)",
+                    "R$ 100 mil de 2013 valeriam hoje (R$)", "Em poder de compra de 2013, descontado o IPCA (R$)",
+                    "Com proventos reinvestidos (R$)",
                     "Retorno ao ano (%)", "Acima do IPCA (%)", "Fonte"])
         for a in ativos:
             w.writerow([a["nome"], rotulo_data(a, "d0"), round(a["v0"], 6), rotulo_data(a, "d1"),
                         round(a["v1"], 6), a["unidade"], round(a["var_orig"] * 100, 2),
-                        round(a["var_brl"] * 100, 2), round(a["hoje"], 2),
+                        round(a["var_brl"] * 100, 2), round(a["hoje"], 2), round(a["hoje_real"], 2),
                         round(a["hoje_tr"], 2) if a.get("hoje_tr") else "",
                         round(a["ao_ano"] * 100, 2), round(a["real"] * 100, 2), a["fonte"]])
+        w.writerow(["Dinheiro parado (sem render)", "14/11/2013", CAPITAL, "17/11/2026", CAPITAL, "R$",
+                    0, 0, CAPITAL, round(CAPITAL / fator_ipca, 2), "", 0,
+                    round((1 / fator_ipca - 1) * 100, 2), "Mesmo valor nominal; perde a inflação do IPCA"])
 
 
 def escrever_xlsx(ativos, resumo):
@@ -370,13 +376,14 @@ def escrever_xlsx(ativos, resumo):
         ws[c].font = azul
         ws[c].fill = PatternFill("solid", fgColor="C8F5D8")
     ws["B3"].number_format = '"R$" #,##0'
-    ws["C3"] = "← mude aqui o valor aplicado; as colunas K, L, N e P se refazem"
+    ws["C3"] = "← mude aqui o valor aplicado; as colunas K, L, M, O e Q se refazem"
     ws["C3"].font = Font(name="Arial", size=9, italic=True, color="595959")
 
     cols = ["Ativo/indicador", "Tipo", "Unidade", "Data de referência (2013)", "Valor em 17/11/2013",
             "Data de referência (2026)", "Valor em 17/11/2026", "Variação na moeda original",
             "PTAX venda inicial", "PTAX venda final", "Variação percentual acumulada no período (em reais)",
-            "Quanto valeriam hoje R$ 100 mil investidos em 2013", "Retorno ao ano",
+            "Quanto valeriam hoje R$ 100 mil investidos em 2013",
+            "Em poder de compra de 2013 (descontado o IPCA)", "Retorno ao ano",
             "Acima da inflação (IPCA)", "Fator com proventos reinvestidos (moeda original)",
             "R$ 100 mil com proventos reinvestidos", "Fonte"]
     L0 = 6
@@ -400,24 +407,25 @@ def escrever_xlsx(ativos, resumo):
             ws.cell(r, 10, a["fx1"]).font = azul
         ws.cell(r, 11, f'=(G{r}/E{r})*IF(I{r}="",1,J{r}/I{r})-1')
         ws.cell(r, 12, f"=$B$3*(1+K{r})")
-        ws.cell(r, 13, f"=(1+K{r})^(1/$B$4)-1")
-        ws.cell(r, 14, f"=(1+K{r})/(G{lin_ipca}/E{lin_ipca})-1" if a["id"] != "ipca" else None)
+        ws.cell(r, 13, f"=L{r}/(G{lin_ipca}/E{lin_ipca})")
+        ws.cell(r, 14, f"=(1+K{r})^(1/$B$4)-1")
+        ws.cell(r, 15, f"=(1+K{r})/(G{lin_ipca}/E{lin_ipca})-1" if a["id"] != "ipca" else None)
         if a.get("tr"):
-            ws.cell(r, 15, a["tr"]).font = azul
-            ws.cell(r, 16, f'=$B$3*O{r}*IF(I{r}="",1,J{r}/I{r})')
-        ws.cell(r, 17, a["fonte"]).font = Font(name="Arial", size=9, color="595959")
-        for j in (8, 11, 13, 14):
+            ws.cell(r, 16, a["tr"]).font = azul
+            ws.cell(r, 17, f'=$B$3*P{r}*IF(I{r}="",1,J{r}/I{r})')
+        ws.cell(r, 18, a["fonte"]).font = Font(name="Arial", size=9, color="595959")
+        for j in (8, 11, 14, 15):
             ws.cell(r, j).number_format = "0.0%"
-        for j in (12, 16):
+        for j in (12, 13, 17):
             ws.cell(r, j).number_format = '"R$" #,##0'
         for j in (5, 7):
             ws.cell(r, j).number_format = "#,##0.00" if a["v1"] >= 1 else "0.0000"
         for j in (9, 10):
             ws.cell(r, j).number_format = "0.0000"
-        ws.cell(r, 15).number_format = "0.00x"
-        for j in range(1, 18):
+        ws.cell(r, 16).number_format = "0.00x"
+        for j in range(1, 19):
             ws.cell(r, j).border = Border(bottom=fina)
-            if j in (1, 2, 3, 4, 6, 8, 11, 12, 13, 14, 16):
+            if j in (1, 2, 3, 4, 6, 8, 11, 12, 13, 14, 15, 17):
                 ws.cell(r, j).font = negr if j in (1, 12) else fonte
         if a["id"] == "ipca":
             ws.cell(r, 12).comment = Comment("No IPCA, é quanto é preciso ter hoje para comprar o mesmo "
@@ -426,8 +434,23 @@ def escrever_xlsx(ativos, resumo):
             ws.cell(r, 12).comment = Comment("Hipotético: comprar o produto em 2013 e vender hoje. "
                                              "Serve para comparar preços, não como investimento.", "liberta-dados")
 
+    # Dinheiro parado: mesmos R$ 100 mil, sem render
+    r = L0 + 1 + len(ativos)
+    for j, v in enumerate(["Dinheiro parado (sem render)", "Referência", "R$", "14/11/2013", "=$B$3",
+                           "17/11/2026", "=$B$3", f"=G{r}/E{r}-1", None, None, f"=G{r}/E{r}-1", f"=$B$3*(1+K{r})",
+                           f"=L{r}/(G{lin_ipca}/E{lin_ipca})", f"=(1+K{r})^(1/$B$4)-1",
+                           f"=(1+K{r})/(G{lin_ipca}/E{lin_ipca})-1"], 1):
+        c = ws.cell(r, j, v)
+        c.font = negr if j in (1, 12, 13) else fonte
+        c.border = Border(bottom=fina)
+    for j in (8, 11, 14, 15):
+        ws.cell(r, j).number_format = "0.0%"
+    for j in (5, 7, 12, 13):
+        ws.cell(r, j).number_format = '"R$" #,##0'
+    ws.cell(r, 18, "Dinheiro guardado sem nenhum rendimento: o valor nominal não muda e o IPCA corrói o poder de compra").font = Font(name="Arial", size=9, color="595959")
+
     # Bloco do IPCA
-    r = L0 + len(ativos) + 2
+    r = L0 + len(ativos) + 3
     ws.cell(r, 1, "IPCA: poder de compra").font = Font(name="Arial", size=12, bold=True)
     linhas = [
         ("Inflação acumulada (nov/2013 até o último mês divulgado)", f"=G{lin_ipca}/E{lin_ipca}-1", "0.0%"),
@@ -441,7 +464,7 @@ def escrever_xlsx(ativos, resumo):
         c.number_format = fmt
         c.font = negr
 
-    larguras = [34, 18, 26, 26, 14, 26, 14, 13, 11, 11, 16, 18, 10, 12, 14, 18, 70]
+    larguras = [34, 18, 26, 26, 14, 26, 14, 13, 11, 11, 16, 18, 18, 10, 12, 14, 18, 70]
     for j, w in enumerate(larguras, 1):
         ws.column_dimensions[get_column_letter(j)].width = w
     ws.freeze_panes = ws.cell(L0 + 1, 2)

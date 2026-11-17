@@ -16,7 +16,7 @@
   .topo { display: flex; justify-content: space-between; font-size: 26px; padding-bottom: 18px;
     border-bottom: 2px solid transparent; border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; }
   .topo .n { color: var(--suave); font-weight: 300; }
-  h1 { font-size: 66px; line-height: 1.06; font-weight: 800; letter-spacing: -.025em; margin-top: 56px; }
+  h1 { font-size: 62px; line-height: 1.06; font-weight: 800; letter-spacing: -.025em; margin-top: 56px; }
   h1 em, h2 em, .v em { font-style: normal; color: var(--verde); }
   .sub { font-size: 29px; line-height: 1.4; font-weight: 300; color: #d9dddf; margin-top: 22px; }
   .corpo { flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -32,7 +32,7 @@
   .seta i::after { content: ""; position: absolute; right: -2px; top: -8px; border: 9px solid transparent; border-left: 14px solid var(--verde); border-right: 0; }
 
   /* barras */
-  .barras { display: grid; gap: 26px; position: relative; }
+  .barras { display: grid; gap: 14px; position: relative; }
   .linha .nome { font-size: 29px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; }
   .linha .nome span { font-weight: 800; font-variant-numeric: tabular-nums; }
   .linha .nome small { font-size: 22px; font-weight: 300; color: var(--suave); margin-left: 10px; }
@@ -40,6 +40,13 @@
   .barra { position: absolute; left: 0; top: 0; height: 26px; border-radius: 5px; background: var(--verde); }
   .barra.hipo { background: var(--ve1); box-shadow: inset 0 0 0 3px var(--verde); }
   .barra.ref { background: var(--cinza); }
+  .barra.parado { background: #000; box-shadow: inset 0 0 0 3px var(--cinza); }
+  .leg { display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: 21px; color: var(--suave); margin-top: 18px; margin-bottom: 30px; }
+  .leg span { display: inline-flex; align-items: center; gap: 10px; }
+  .leg i { display: inline-block; width: 30px; height: 16px; border-radius: 3px; background: var(--verde); }
+  .leg i.hipo { background: var(--ve1); box-shadow: inset 0 0 0 2px var(--verde); }
+  .leg i.tr { width: 0; height: 26px; border-radius: 0; background: none; border-left: 3px dashed #fff; margin: 0 6px; }
+  .leg i.parado { background: #000; box-shadow: inset 0 0 0 2px var(--cinza); }
   .extra { font-size: 21px; color: var(--suave); font-weight: 300; margin-top: 6px; }
   .extra b { color: #fff; font-weight: 700; }
   .marco { position: absolute; top: -14px; bottom: -6px; border-left: 3px dashed #fff; }
@@ -76,15 +83,15 @@
   const A = Object.fromEntries(R.ativos.map(a => [a.id, a]));
   const n = +(new URLSearchParams(location.search).get("card") || 1);
   const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-  const mil = v => "R$ " + nf(0).format(v / 1e3) + " mil";
+  const mil = v => "R$ " + nf(v < 1e5 ? 1 : 0).format(v / 1e3) + " mil";
   const mil1 = v => "R$ " + nf(1).format(v / 1e3) + " mil";
   const mi = v => "R$ " + nf(1).format(v / 1e6) + (v >= 2e6 ? " milhões" : " milhão");
-  const pct = x => (x >= 0 ? "+" : "−") + nf(1).format(Math.abs(x * 100)) + "%";
+  const pct = x => Math.abs(x) < 5e-4 ? "0%" : (x >= 0 ? "+" : "−") + nf(1).format(Math.abs(x * 100)) + "%";
   const vezes = v => nf(v / R.capital >= 100 ? 0 : 1).format(v / R.capital) + "×";
   const data = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
   const mes = s => ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+s.slice(5, 7) - 1] + "/" + s.slice(0, 4);
   const fim = ["ibov", "petr4", "sp500", "nvda", "ttwo"].map(k => A[k].d1).sort().pop();
-  const total = 5;
+  const total = 6;
   const topo = `<div class="topo"><span>Liberta Investimentos</span><span class="n">${n}/${total}</span></div>`;
   const aviso = "Rentabilidade passada não é garantia de rentabilidade futura. Simulação educativa, sem impostos e custos.";
   const fonte = t => `<div class="rodape">${t}<br>${aviso}</div>`;
@@ -100,33 +107,49 @@
       ${fonte(`Fechamento de ${data(fim)}. Fontes: Banco Central, IBGE, ANP, B3 e Yahoo Finance.`)}`;
   }
 
-  if (n === 2) {
-    const ids = ["cdi", "ibov", "dolar", "gasolina", "petr4", "brent", "ipca"];
-    const nomes = { cdi: "CDI", ibov: "Ibovespa", dolar: "Dólar", gasolina: "Gasolina", petr4: "Petrobras (PETR4)", brent: "Petróleo Brent", ipca: "Inflação (IPCA)" };
-    const max = Math.max(...ids.map(k => A[k].hoje)) * 1.04;
-    const W = 928;
+  // Barras horizontais em escala linear a partir de zero; chave = "hoje" (nominal) ou "hoje_real" (poder de compra de 2013)
+  function barras(ids, chave, marcoValor, marcoTexto) {
+    const nomes = { cdi: "CDI", ibov: "Ibovespa", dolar: "Dólar", gasolina: "Gasolina", petr4: "Petrobras (PETR4)", brent: "Petróleo Brent",
+                    ipca: "Inflação (IPCA)", parado: "Dinheiro parado" };
+    const pega = k => k === "parado" ? R.parado : A[k];
+    const val = k => pega(k)[chave];
+    const varia = k => chave === "hoje" ? (k === "parado" ? 0 : A[k].var_brl) : (k === "parado" ? R.parado.real : A[k].real);
+    const max = Math.max(...ids.map(val)) * 1.04, W = 928;
     const linhas = ids.map(k => {
-      const a = A[k], w = a.hoje / max * W;
-      const cls = k === "ipca" ? "ref" : a.tipo.startsWith("Preço") ? "hipo" : "";
-      const extra = k === "petr4" ? `<div class="extra">com dividendos reinvestidos: <b>${mil(a.hoje_tr)}</b></div>`
-        : (k === "gasolina" || k === "brent") ? `<div class="extra">comparação de preço, hipotética</div>` : "";
-      return `<div class="linha"><div class="nome">${nomes[k]}<span>${mil(a.hoje)}<small>${pct(a.var_brl)}</small></span></div>
-        <div class="trilho"><div class="barra ${cls}" style="width:${w}px"></div></div>${extra}</div>`;
+      const a = pega(k);
+      const cls = k === "ipca" ? "ref" : k === "parado" ? "parado" : a.tipo.startsWith("Preço") ? "hipo" : "";
+      const extra = k === "petr4" ? `<div class="extra">com dividendos reinvestidos: <b>${mil(chave === "hoje" ? a.hoje_tr : a.hoje_tr / R.fator_ipca)}</b></div>` : "";
+      return `<div class="linha"><div class="nome">${nomes[k]}<span>${mil(val(k))}<small>${pct(varia(k))}</small></span></div>
+        <div class="trilho"><div class="barra ${cls}" style="width:${val(k) / max * W}px"></div></div>${extra}</div>`;
     }).join("");
-    const xi = R.ipca.necessario / max * W;
+    return `<div class="corpo"><div class="barras">${linhas}
+      <div class="marco" style="left:${marcoValor / max * W}px"></div></div></div>`;
+  }
+  const legenda = t => `<div class="leg"><span><i></i>investimento</span><span><i class="hipo"></i>preço (hipotético)</span><span><i class="parado"></i>parado</span><span><i class="tr"></i>${t}</span></div>`;
+
+  if (n === 2) {
     h = `${topo}
       <h1>R$ 100 mil de 2013, hoje: <em>CDI, Bolsa, dólar e combustíveis</em></h1>
-      <p class="sub">Valor em reais em ${data(fim)}. A linha tracejada é o que só repõe a inflação.</p>
-      <div class="corpo"><div class="barras">${linhas}
-        <div class="marco" style="left:${xi}px"><span>repõe a inflação</span></div></div></div>
+      <p class="sub">Valor em reais em ${data(fim)}, sem descontar a inflação. A linha tracejada é o que só repõe o IPCA.</p>
+      ${legenda("repõe a inflação")}
+      ${barras(["cdi", "ibov", "dolar", "gasolina", "petr4", "brent", "ipca", "parado"], "hoje", R.ipca.necessario, "repõe a inflação")}
       ${fonte("Fontes: Banco Central (CDI, dólar PTAX), B3 via Yahoo Finance, ANP, IBGE.")}`;
   }
 
   if (n === 3) {
+    h = `${topo}
+      <h1>Os mesmos R$ 100 mil, <em>descontada a inflação</em></h1>
+      <p class="sub">Quanto cada aplicação compra hoje, em dinheiro de 2013. Abaixo da linha tracejada, perdeu poder de compra.</p>
+      ${legenda("poder de compra de 2013")}
+      ${barras(["cdi", "ibov", "dolar", "gasolina", "petr4", "brent", "parado"], "hoje_real", R.capital, "poder de compra de 2013")}
+      ${fonte("Valores divididos pelo IPCA acumulado de nov/2013 a " + mes(R.ipca.mes1) + " (+" + nf(1).format(R.ipca.acumulada * 100) + "%). Fontes: Banco Central, B3, ANP, IBGE.")}`;
+  }
+
+  if (n === 4) {
     const ids = ["nvda", "btc", "ttwo", "sp500"];
     const nomes = { nvda: ["Nvidia", "ação, Nasdaq"], btc: ["Bitcoin", "criptomoeda"], ttwo: ["Take-Two", "dona da Rockstar Games"], sp500: ["S&P 500", "índice da Bolsa americana"] };
     const rows = ids.map(k => `<div class="g"><div class="nome">${nomes[k][0]}<small>${nomes[k][1]}</small></div>
-      <div class="v">${mi(A[k].hoje)}<small>${vezes(A[k].hoje)} o valor aplicado</small></div></div>`).join("");
+      <div class="v">${mi(A[k].hoje)}<small>${vezes(A[k].hoje)} o valor aplicado · ${A[k].hoje_real >= 1e6 ? mi(A[k].hoje_real) : mil(A[k].hoje_real)} em dinheiro de 2013</small></div></div>`).join("");
     const d = A.dolar;
     h = `${topo}
       <h1>R$ 100 mil de 2013, hoje: <em>ativos no exterior</em></h1>
@@ -136,7 +159,7 @@
       ${fonte("Fontes: Yahoo Finance (Nasdaq, S&P), CoinMetrics (bitcoin), Banco Central (PTAX).")}`;
   }
 
-  if (n === 4) {
+  if (n === 5) {
     const i = R.ipca;
     h = `${topo}
       <h1>O que a inflação fez com <em>R$&nbsp;100&nbsp;mil</em></h1>
@@ -148,7 +171,7 @@
       ${fonte("Fonte: IBGE (IPCA, número-índice).")}`;
   }
 
-  if (n === 5) {
+  if (n === 6) {
     h = `${topo}
       <h1>Como fizemos <em>a conta</em></h1>
       <div class="corpo"><div class="metodo">

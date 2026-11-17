@@ -31,7 +31,7 @@
 <main>
   <div class="marca"><span>Liberta Investimentos</span><span style="color:var(--suave)">Educação financeira</span></div>
   <h1>R$ 100 mil investidos em 2013: <em>quanto valem hoje</em></h1>
-  <p>Carrossel de 5 cards para o feed do Instagram (1080 × 1350). Clique em cada um para baixar o arquivo em tamanho original.</p>
+  <p>Carrossel de 6 cards para o feed do Instagram (1080 × 1350). Clique em cada um para baixar o arquivo em tamanho original.</p>
   <div class="botoes">
     <a href="dados/liberta-dados.xlsx" download>Baixar planilha (.xlsx)</a>
     <a href="completo.html" class="sec">Versão completa, com gráficos interativos</a>
@@ -40,11 +40,11 @@
   <footer>Rentabilidade passada não é garantia de rentabilidade futura. Simulação educativa, sem impostos e custos; não é recomendação de investimento.</footer>
 </main>
 <script>
-  const nomes = ["Capa", "CDI, Bolsa, dólar e combustíveis", "Ativos no exterior", "Inflação", "Como fizemos a conta"];
+  const nomes = ["Capa", "CDI, Bolsa, dólar e combustíveis", "Descontada a inflação", "Ativos no exterior", "Inflação", "Como fizemos a conta"];
   const v = Date.now().toString(36);
   document.getElementById("grade").innerHTML = nomes.map((n, i) => `
     <figure><a href="cards/card-${i + 1}.png" download="liberta-100mil-${i + 1}.png"><img src="cards/card-${i + 1}.png?v=${v}" alt="Card ${i + 1}: ${n}" width="1080" height="1350" loading="lazy"></a>
-    <figcaption><span>${i + 1}/5 · ${n}</span><a href="cards/card-${i + 1}.png" download="liberta-100mil-${i + 1}.png">baixar</a></figcaption></figure>`).join("");
+    <figcaption><span>${i + 1}/6 · ${n}</span><a href="cards/card-${i + 1}.png" download="liberta-100mil-${i + 1}.png">baixar</a></figcaption></figure>`).join("");
 </script>
 </body>
 </html>
