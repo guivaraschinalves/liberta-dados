@@ -76,6 +76,11 @@
   .notas p { max-width: 90ch; font-weight: 300; }
   #notas { display: grid; gap: 8px; }
   .rotulo { paint-order: stroke; stroke: var(--cartao); stroke-width: 4px; stroke-linejoin: round; }
+  .fonte-graf { font-size: .74rem; color: var(--suave); font-weight: 300; margin: 0; }
+  .exportar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .85rem; color: var(--suave); }
+  .exportar button { font: inherit; color: var(--fg); background: none; border: 1px solid #26322e; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  .exportar button:hover { border-color: var(--verde); }
+  .exportar button[disabled] { opacity: .5; cursor: wait; }
   .series { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .85rem; color: var(--suave); }
   .series a { color: var(--fg); border: 1px solid #26322e; border-radius: 999px; padding: 4px 12px; text-decoration: none; }
   .series a:hover { border-color: var(--verde); }
@@ -136,6 +141,10 @@
       <span><i class="linha"></i>Inflação (IPCA)</span>
     </div>
     <div class="graf" id="g-barras"></div>
+    <p class="fonte-graf">Fontes: Banco Central, IBGE, ANP, B3, Yahoo Finance e CoinMetrics. De 14/11/2013 a <span class="data-fim"></span>. Rentabilidade passada não é garantia de rentabilidade futura. · Liberta Investimentos</p>
+    <div class="exportar">Baixar imagem:
+      <button data-exp="png">PNG</button><button data-exp="jpg">JPG</button><button data-exp="svg">SVG</button><button data-exp="pdf">PDF</button>
+    </div>
   </section>
 
   <section class="cartao">
@@ -160,6 +169,10 @@
       <span><i style="background:var(--outros)"></i>Demais</span>
     </div>
     <div class="graf" id="g-linhas"></div>
+    <p class="fonte-graf">Fontes: Banco Central, IBGE, ANP, B3, Yahoo Finance e CoinMetrics. De 14/11/2013 a <span class="data-fim"></span>. Rentabilidade passada não é garantia de rentabilidade futura. · Liberta Investimentos</p>
+    <div class="exportar">Baixar imagem:
+      <button data-exp="png">PNG</button><button data-exp="jpg">JPG</button><button data-exp="svg">SVG</button><button data-exp="pdf">PDF</button>
+    </div>
     <div class="series">Baixar a série:
       <a href="dados/serie-mensal.csv" download>mensal, em reais (CSV)</a>
       <a href="dados/serie-mensal-descontada-ipca.csv" download>mensal, descontada a inflação (CSV)</a>
@@ -478,7 +491,125 @@
     document.querySelectorAll("[data-real]").forEach(x => x.setAttribute("aria-pressed", x.dataset.real === b.dataset.real));
     barras(); linhas();
   });
+
+  // ---------- Baixar o gráfico como imagem (SVG, PNG, JPG, PDF), do jeito que está na tela ----------
+  const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let fonteEmbutida = null;
+  async function fonteInter() {
+    if (fonteEmbutida !== null) return fonteEmbutida;
+    try {
+      const css = await (await fetch("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap")).text();
+      const blocos = css.split("/*").filter(b => /^\s*latin(-ext)?\s*\*\//.test(b)).map(b => "/*" + b);
+      let saida = "";
+      for (const b of blocos) {
+        const url = (b.match(/url\((https:[^)]+)\)/) || [])[1];
+        if (!url) continue;
+        const buf = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        let bin = ""; for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
+        saida += b.replace(url, "data:font/woff2;base64," + btoa(bin));
+      }
+      fonteEmbutida = saida;
+    } catch (e) { fonteEmbutida = ""; }
+    return fonteEmbutida;
+  }
+  const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function legendaDe(qual) {
+    const v = cssVar("--verde"), ip = cssVar("--ipca"), pa = cssVar("--parado"), ou = cssVar("--outros"), hi = cssVar("--hipo");
+    if (qual === "barras") return [["cheio", v, "Investimento"], ["vazado", v, "Preço de produto (simulação hipotética)", hi],
+      ...(real ? [] : [["cheio", ip, "IPCA"]]), ["vazado", pa, "Dinheiro parado", "none"],
+      ["traco", ip, real ? "Poder de compra de 2013" : "Inflação (IPCA)"]];
+    return [["cheio", v, porId[selecionado].nome], ["linha", cssVar("--cdi"), "CDI"], ["traco", ip, real ? "Poder de compra de 2013" : "IPCA"],
+      ["pontos", pa, "Dinheiro parado (perda de poder de compra)"], ["cheio", ou, "Demais"]];
+  }
+  async function montarSVG(qual) {
+    const graf = document.getElementById(qual === "barras" ? "g-barras" : "g-linhas").querySelector("svg");
+    const [, , GW, GH] = graf.getAttribute("viewBox").split(" ").map(Number);
+    const pad = 28, W = GW + 2 * pad, fundo = cssVar("--cartao") || "#0b0f0e";
+    const titulo = qual === "barras" ? "Valor hoje de R$ 100 mil aplicados em 2013" : "Trajetória de R$ 100 mil, mês a mês";
+    const sub = [real ? "Descontada a inflação, em reais de 2013" : "Em reais de hoje",
+                 "escala " + ((qual === "barras" ? escalaB : escalaL) === "log" ? "logarítmica" : "normal"),
+                 modo === "tr" ? "ações com proventos reinvestidos" : "ações só pelo preço"].join(" · ");
+    // legenda com quebra de linha
+    let lx = pad, ly = pad + 74, leg = "";
+    for (const [tipo, cor, txt, preench] of legendaDe(qual)) {
+      const larg = 24 + txt.length * 6.6 + 18;
+      if (lx + larg > W - pad) { lx = pad; ly += 22; }
+      if (tipo === "cheio") leg += `<rect x="${lx}" y="${ly - 9}" width="14" height="10" rx="2" fill="${cor}"/>`;
+      if (tipo === "vazado") leg += `<rect x="${lx + .75}" y="${ly - 8.25}" width="12.5" height="8.5" rx="2" fill="${preench}" stroke="${cor}" stroke-width="1.5"/>`;
+      if (tipo === "linha") leg += `<line x1="${lx}" x2="${lx + 14}" y1="${ly - 4}" y2="${ly - 4}" stroke="${cor}" stroke-width="2.5"/>`;
+      if (tipo === "traco") leg += `<line x1="${lx}" x2="${lx + 14}" y1="${ly - 4}" y2="${ly - 4}" stroke="${cor}" stroke-width="2" stroke-dasharray="4 3"/>`;
+      if (tipo === "pontos") leg += `<line x1="${lx + 1}" x2="${lx + 14}" y1="${ly - 4}" y2="${ly - 4}" stroke="${cor}" stroke-width="3" stroke-dasharray="0.1 4.5" stroke-linecap="round"/>`;
+      leg += `<text x="${lx + 20}" y="${ly}" class="leg">${esc(txt)}</text>`;
+      lx += larg;
+    }
+    const gy = ly + 20, H = gy + GH + 58;
+    // cópia do gráfico com as variáveis CSS trocadas pelos valores
+    const copia = graf.cloneNode(true);
+    const troca = t => t.replace(/var\((--[\w-]+)\)/g, (_, n) => cssVar(n));
+    copia.querySelectorAll("*").forEach(e => { for (const a of [...e.attributes]) if (a.value.includes("var(")) e.setAttribute(a.name, troca(a.value)); });
+    copia.querySelectorAll('rect[fill="transparent"], path[stroke="transparent"]').forEach(e => e.remove());
+    copia.querySelectorAll("line, circle").forEach(e => { if (e.getAttribute("opacity") === "0") e.remove(); });
+    copia.removeAttribute("style"); copia.removeAttribute("role");
+    copia.setAttribute("x", pad); copia.setAttribute("y", gy); copia.setAttribute("width", GW); copia.setAttribute("height", GH);
+    copia.setAttribute("overflow", "visible");
+    const fonte = await fonteInter();
+    const rod1 = `Fontes: Banco Central, IBGE, ANP, B3, Yahoo Finance e CoinMetrics. De 14/11/2013 a ${dataBR(fim)}. Sem impostos e custos.`;
+    const rod2 = "Rentabilidade passada não é garantia de rentabilidade futura. · Liberta Investimentos";
+    return { W, H, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<style>${fonte}
+text { font-family: Inter, Arial, sans-serif; fill: #ffffff; }
+.eixo text { fill: ${cssVar("--suave")}; font-size: 12px; }
+.grade line { stroke: ${cssVar("--grade")}; }
+.rotulo { paint-order: stroke; stroke: ${fundo}; stroke-width: 4px; stroke-linejoin: round; }
+.leg { fill: ${cssVar("--suave")}; font-size: 12.5px; }
+.t { font-size: 22px; font-weight: 700; } .s { font-size: 14px; font-weight: 300; fill: ${cssVar("--suave")}; }
+.r { font-size: 11px; font-weight: 300; fill: ${cssVar("--suave")}; }
+</style>
+<rect width="${W}" height="${H}" fill="${fundo}"/>
+<rect width="${W}" height="3" fill="${cssVar("--verde")}"/>
+<text x="${pad}" y="${pad + 22}" class="t">${esc(titulo)}</text>
+<text x="${pad}" y="${pad + 46}" class="s">${esc(sub)}</text>
+${leg}
+${new XMLSerializer().serializeToString(copia)}
+<text x="${pad}" y="${H - 34}" class="r">${esc(rod1)}</text>
+<text x="${pad}" y="${H - 18}" class="r">${esc(rod2)}</text>
+</svg>` };
+  }
+  function rasterizar(svg, W, H, escala, tipo) {
+    return new Promise((ok, erro) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas"); c.width = W * escala; c.height = H * escala;
+        const ctx = c.getContext("2d"); ctx.scale(escala, escala); ctx.drawImage(img, 0, 0, W, H);
+        ok(c.toDataURL(tipo, 0.93));
+      };
+      img.onerror = () => erro(new Error("falha ao desenhar o SVG"));
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  }
+  const baixarURL = (url, nome) => { const a = document.createElement("a"); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); };
+  async function exportar(qual, fmt) {
+    const { W, H, svg } = await montarSVG(qual);
+    const nome = `100mil-2013-${qual}-${real ? "descontado-ipca" : "reais"}-${(qual === "barras" ? escalaB : escalaL) === "log" ? "log" : "normal"}`;
+    if (fmt === "svg") return baixarURL(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), nome + ".svg");
+    if (fmt === "png") return baixarURL(await rasterizar(svg, W, H, 3, "image/png"), nome + ".png");
+    const jpg = await rasterizar(svg, W, H, 3, "image/jpeg");
+    if (fmt === "jpg") return baixarURL(jpg, nome + ".jpg");
+    const pdf = new window.jspdf.jsPDF({ orientation: W > H ? "landscape" : "portrait", unit: "pt", format: [W * .75, H * .75], compress: true });
+    pdf.addImage(jpg, "JPEG", 0, 0, W * .75, H * .75);
+    pdf.save(nome + ".pdf");
+  }
+  window._exportar = { montarSVG, rasterizar };
+  document.querySelectorAll(".exportar button").forEach(b => b.onclick = async () => {
+    const qual = b.closest("section").querySelector("#g-barras") ? "barras" : "trajetoria";
+    const botoes = b.parentElement.querySelectorAll("button");
+    botoes.forEach(x => x.disabled = true);
+    try { await exportar(qual, b.dataset.exp); }
+    catch (e) { alert("Não consegui gerar a imagem: " + e.message); }
+    finally { botoes.forEach(x => x.disabled = false); }
+  });
   tudo(); notas();
+  document.querySelectorAll(".data-fim").forEach(e => e.textContent = dataBR(fim));
   let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => { barras(); linhas(); }, 150); });
 })();
 </script>
@@ -505,5 +636,6 @@
   });
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
