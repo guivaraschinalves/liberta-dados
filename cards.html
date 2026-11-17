@@ -11,11 +11,16 @@
   * { box-sizing: border-box; margin: 0; }
   html, body { width: var(--w); height: var(--h); overflow: hidden; background: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: "Inter", Arial, sans-serif; color: #fff; }
-  .card { width: var(--w); height: var(--h); padding: 96px 84px 64px; display: flex; flex-direction: column;
+  .card { width: var(--w); height: var(--h); padding: 64px 84px 56px; display: flex; flex-direction: column;
     background: radial-gradient(80% 55% at 100% 0%, rgba(30,215,96,.30) 0%, rgba(0,52,42,.35) 35%, rgba(0,0,0,0) 70%), #000; }
   h1 { font-size: 58px; line-height: 1.08; font-weight: 800; letter-spacing: -.025em; }
   h1 em { font-style: normal; color: var(--verde); }
-  .sub { font-size: 24px; font-weight: 300; color: var(--suave); }
+  .marca { font-size: 22px; padding-bottom: 14px; margin-bottom: 40px;
+    border-bottom: 2px solid transparent; border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; }
+  h1 { font-size: 50px; line-height: 1.08; font-weight: 800; letter-spacing: -.02em; }
+  h1 em { font-style: normal; color: var(--verde); }
+  .sub { font-size: 24px; font-weight: 300; color: var(--suave); margin-top: 12px; }
+  .nome b small { font-size: 21px; font-weight: 300; color: var(--suave); margin-left: 12px; }
   .graf { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .barras { position: relative; display: grid; gap: var(--gap, 34px); }
   .nome { display: flex; justify-content: space-between; align-items: baseline; font-size: 28px; font-weight: 400; }
@@ -42,6 +47,7 @@
   pagina.textContent = `@page { size: ${LW}px ${LH}px; margin: 0; }`;
   document.head.appendChild(pagina);
   const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = x => Math.abs(x) < 5e-4 ? "0%" : (x >= 0 ? "+" : "−") + nf(1).format(Math.abs(x * 100)) + "%";
   const reais = v => v >= 1e6 ? "R$ " + nf(1).format(v / 1e6) + " mi" : "R$ " + nf(v < 1e5 ? 1 : 0).format(v / 1e3) + " mil";
   const data = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
   const fim = ["ibov", "petr4", "sp500", "nvda", "ttwo"].map(k => A[k].d1).sort().pop();
@@ -50,7 +56,8 @@
 
   function grafico(ids, chave, marco) {
     const W = LW - 168, max = Math.max(...ids.map(k => A[k][chave]));
-    const linhas = ids.map(k => `<div><div class="nome">${nomes[k]}<b>${reais(A[k][chave])}</b></div>
+    const varia = k => chave === "hoje_real" ? A[k].real : (k === "parado" ? 0 : A[k].var_brl);
+    const linhas = ids.map(k => `<div><div class="nome">${nomes[k]}<b>${reais(A[k][chave])}<small>${pct(varia(k))}</small></b></div>
       <div class="barra ${k === "parado" ? "parado" : ""}" style="width:${Math.max(4, A[k][chave] / max * W)}px"></div></div>`).join("");
     const m = marco ? `<div class="marco" style="left:${marco[0] / max * W}px"><span>${marco[1]}</span></div>` : "";
     return `<div class="graf"><div class="barras">${linhas}${m}</div></div>`;
@@ -58,13 +65,14 @@
   const rodape = t => `<div class="rodape">${t} De 14/11/2013 a ${data(fim)}. Rentabilidade passada não é garantia de rentabilidade futura.</div>`;
   const br = ["cdi", "ibov", "dolar", "gasolina", "petr4", "brent", "parado"];
   let h = "";
-  if (n === 1) h = `<p class="sub">Em reais</p>
+  const marca = `<div class="marca">Liberta Investimentos</div>`;
+  if (n === 1) h = `${marca}<h1>R$ 100 mil aplicados em 2013, <em>hoje</em></h1><p class="sub">Valor em reais, sem descontar a inflação</p>
     ${grafico(br, "hoje", [R.ipca.necessario, "inflação"])}
     ${rodape("Fontes: Banco Central, B3, ANP, IBGE.")}`;
-  if (n === 2) h = `<p class="sub">Em reais de 2013, corrigidos pelo IPCA</p>
+  if (n === 2) h = `${marca}<h1>R$ 100 mil aplicados em 2013, <em>descontada a inflação</em></h1><p class="sub">Poder de compra hoje, em reais de 2013 (IPCA)</p>
     ${grafico(br, "hoje_real", [R.capital, "poder de compra de 2013"])}
     ${rodape("Fontes: Banco Central, B3, ANP, IBGE.")}`;
-  if (n === 3) h = `<p class="sub">Em reais, com a variação do dólar</p>
+  if (n === 3) h = `${marca}<h1>R$ 100 mil aplicados em 2013, <em>no exterior</em></h1><p class="sub">Valor em reais, com a variação do dólar</p>
     ${grafico(["nvda", "btc", "ttwo", "sp500"], "hoje")}
     ${rodape("Fontes: Yahoo Finance, CoinMetrics, Banco Central.")}`;
   document.getElementById("card").innerHTML = h;
