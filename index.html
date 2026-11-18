@@ -149,7 +149,7 @@
 
   <section class="cartao">
     <h2>Trajetória de R$ 100 mil, mês a mês, em reais</h2>
-    <p class="sub">Escolha um ativo para destacar. CDI, IPCA e dinheiro parado ficam sempre à vista. Na escala logarítmica, a mesma inclinação é o mesmo rendimento percentual.</p>
+    <p class="sub">Clique nos ativos para destacar até quatro ao mesmo tempo; clique de novo para tirar. CDI, IPCA e dinheiro parado ficam sempre à vista. Na escala logarítmica, a mesma inclinação é o mesmo rendimento percentual.</p>
     <div class="controles">
       <span class="rot">Valores:</span>
       <button class="botao" data-real="0" aria-pressed="true">Em reais de hoje</button>
@@ -162,7 +162,7 @@
     </div>
     <div class="chips" id="chips"></div>
     <div class="legenda">
-      <span><i style="background:var(--verde)"></i><span id="leg-sel">Ativo escolhido</span></span>
+      <span id="leg-sel" style="display:contents"></span>
       <span><i class="linha cheia"></i>CDI</span>
       <span><i class="linha"></i>IPCA</span>
       <span><i class="linha pontos"></i>Dinheiro parado (perda de poder de compra)</span>
@@ -211,7 +211,7 @@
   const A = R.ativos;
   const porId = Object.fromEntries(A.map(a => [a.id, a]));
   const svgNS = "http://www.w3.org/2000/svg";
-  let modo = "preco", selecionado = "nvda", real = false, escalaB = "normal", escalaL = "log";
+  let modo = "preco", real = false, escalaB = "normal", escalaL = "log";
   // Marcas "redondas" para eixo linear de 0 a max
   function marcasLin(max) {
     const bruto = max / 5, p = 10 ** Math.floor(Math.log10(bruto)), n = bruto / p;
@@ -329,6 +329,21 @@
     ti.style.fill = "var(--ipca)";
   }
 
+  // Destaques na trajetória: até 4 ativos; cada um fica com a sua cor enquanto estiver marcado.
+  // Ordem de cores validada para daltonismo contra CDI (branco), IPCA (cinza) e dinheiro parado (lilás);
+  // verde × amarelo é o par mais próximo, por isso o amarelo só entra no 4º destaque. Todo destaque leva rótulo.
+  const CORES_DESTAQUE = ["#1ed760", "#ff5fd2", "#2fd6e0", "#ffd84d"];
+  const destaque = new Map([["nvda", CORES_DESTAQUE[0]]]);
+  function alternar(id) {
+    if (destaque.has(id)) destaque.delete(id);
+    else {
+      if (destaque.size >= CORES_DESTAQUE.length) destaque.delete(destaque.keys().next().value);
+      const livre = CORES_DESTAQUE.find(c => ![...destaque.values()].includes(c));
+      destaque.set(id, livre);
+    }
+    chips(); linhas();
+  }
+
   // Linhas
   function chips() {
     const c = document.getElementById("chips");
@@ -336,11 +351,14 @@
     A.filter(a => !["cdi", "ipca"].includes(a.id)).forEach(a => {
       const b = document.createElement("button");
       b.className = "botao"; b.textContent = curto[a.id];
-      b.setAttribute("aria-pressed", a.id === selecionado);
-      b.onclick = () => { selecionado = a.id; chips(); linhas(); };
+      const cor = destaque.get(a.id);
+      b.setAttribute("aria-pressed", !!cor);
+      if (cor) { b.style.background = cor; b.style.borderColor = cor; }
+      b.onclick = () => alternar(a.id);
       c.appendChild(b);
     });
-    document.getElementById("leg-sel").textContent = porId[selecionado].nome;
+    document.getElementById("leg-sel").innerHTML = [...destaque].map(([id, cor]) =>
+      `<span><i style="background:${cor}"></i>${porId[id].nome}</span>`).join("") || "<span>Nenhum ativo destacado</span>";
   }
 
   const rotuloLinha = a => a.id === "ipca" && real ? "Poder de compra de 2013" : curto[a.id];
@@ -369,10 +387,11 @@
       t.textContent = ano;
     }
     const d = pts => pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
-    const ordem = [...A.filter(a => !["cdi", "ipca", selecionado].includes(a.id)), porId.ipca, PARADO, porId.cdi, porId[selecionado]];
+    const ordem = [...A.filter(a => !["cdi", "ipca"].includes(a.id) && !destaque.has(a.id)), porId.ipca, PARADO, porId.cdi,
+                   ...[...destaque.keys()].map(id => porId[id])];
     for (const a of ordem) {
-      const sel = a.id === selecionado, ref = ["cdi", "ipca", "parado"].includes(a.id);
-      const cor = sel ? "var(--verde)" : a.id === "cdi" ? "var(--cdi)" : a.id === "ipca" ? "var(--ipca)" : a.id === "parado" ? "var(--parado)" : "var(--outros)";
+      const sel = destaque.has(a.id), ref = ["cdi", "ipca", "parado"].includes(a.id);
+      const cor = sel ? destaque.get(a.id) : a.id === "cdi" ? "var(--cdi)" : a.id === "ipca" ? "var(--ipca)" : a.id === "parado" ? "var(--parado)" : "var(--outros)";
       if (sel) el("path", { d: d(traj(a)), fill: "none", stroke: "var(--cartao)", "stroke-width": 5, "stroke-linejoin": "round" }, svg);
       const p = el("path", { d: d(traj(a)), fill: "none", stroke: cor, "stroke-width": sel ? 2.5 : a.id === "parado" ? 2.6 : ref ? 2 : 1.2,
         "stroke-linejoin": "round", "stroke-linecap": "round",
@@ -381,7 +400,7 @@
         p.style.cursor = "pointer";
         const alvo = el("path", { d: d(traj(a)), fill: "none", stroke: "transparent", "stroke-width": 10 }, svg);
         alvo.style.cursor = "pointer";
-        alvo.addEventListener("click", () => { selecionado = a.id; chips(); linhas(); });
+        alvo.addEventListener("click", () => alternar(a.id));
       }
       if ((sel || ref) && W >= 560) {
         const u = traj(a).at(-1);
@@ -396,9 +415,9 @@
     }
     // Cruz e dica
     const cruz = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--suave)", "stroke-width": 1, opacity: 0 }, svg);
-    const ponto = el("circle", { r: 4.5, fill: "var(--verde)", stroke: "var(--cartao)", "stroke-width": 2, opacity: 0 }, svg);
+    const pontos = [...destaque].map(([id, cor]) => [porId[id], el("circle", { r: 4.5, fill: cor, stroke: "var(--cartao)", "stroke-width": 2, opacity: 0 }, svg)]);
     const area = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
-    const meses = traj(porId[selecionado]).map(p => p[0]);
+    const meses = traj(porId.cdi).map(p => p[0]);
     const valor = (a, s) => { const pts = traj(a); let v = null; for (const p of pts) { if (p[0].slice(0, 7) <= s.slice(0, 7)) v = p; else break; } return v; };
     area.addEventListener("mousemove", ev => {
       const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
@@ -406,14 +425,17 @@
       for (const s of meses) if (Math.abs(X(s) - px) < Math.abs(X(melhor) - px)) melhor = s;
       const xs = X(melhor);
       cruz.setAttribute("x1", xs); cruz.setAttribute("x2", xs); cruz.setAttribute("opacity", .6);
-      const vs = valor(porId[selecionado], melhor);
-      ponto.setAttribute("cx", xs); ponto.setAttribute("cy", Y(vs[1])); ponto.setAttribute("opacity", 1);
-      const linhasDica = [porId[selecionado], porId.cdi, porId.ipca, PARADO].map(a => {
-        const v = valor(a, melhor); return v ? `<div class="l"><span>${rotuloLinha(a)}</span><span>${reais(v[1])}</span></div>` : "";
+      for (const [a, c] of pontos) {
+        const vs = valor(a, melhor);
+        if (vs) { c.setAttribute("cx", xs); c.setAttribute("cy", Y(vs[1])); c.setAttribute("opacity", 1); }
+      }
+      const linhasDica = [...[...destaque.keys()].map(id => porId[id]), porId.cdi, porId.ipca, PARADO].map(a => {
+        const v = valor(a, melhor), cor = destaque.get(a.id);
+        return v ? `<div class="l"><span>${cor ? `<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${cor}"></i>` : ""}${rotuloLinha(a)}</span><span>${reais(v[1])}</span></div>` : "";
       }).join("");
       mostrar(`<b>${melhor.slice(0, 7) === meses.at(-1).slice(0, 7) ? dataBR(melhor) : mesBR(melhor)}</b>${linhasDica}`, ev);
     });
-    area.addEventListener("mouseleave", () => { esconder(); cruz.setAttribute("opacity", 0); ponto.setAttribute("opacity", 0); });
+    area.addEventListener("mouseleave", () => { esconder(); cruz.setAttribute("opacity", 0); pontos.forEach(([, c]) => c.setAttribute("opacity", 0)); });
   }
 
   // Tabela
@@ -518,7 +540,7 @@
     if (qual === "barras") return [["cheio", v, "Investimento"], ["vazado", v, "Preço de produto (simulação hipotética)", hi],
       ...(real ? [] : [["cheio", ip, "IPCA"]]), ["vazado", pa, "Dinheiro parado", "none"],
       ["traco", ip, real ? "Poder de compra de 2013" : "Inflação (IPCA)"]];
-    return [["cheio", v, porId[selecionado].nome], ["linha", cssVar("--cdi"), "CDI"], ["traco", ip, real ? "Poder de compra de 2013" : "IPCA"],
+    return [...[...destaque].map(([id, cor]) => ["cheio", cor, porId[id].nome]), ["linha", cssVar("--cdi"), "CDI"], ["traco", ip, real ? "Poder de compra de 2013" : "IPCA"],
       ["pontos", pa, "Dinheiro parado (perda de poder de compra)"], ["cheio", ou, "Demais"]];
   }
   async function montarSVG(qual) {
