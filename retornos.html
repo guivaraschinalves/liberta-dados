@@ -41,6 +41,14 @@
   th.ord.cresc::after { content: " ▴"; }
   td { padding: 6px 7px; text-align: right; white-space: nowrap; border-radius: 4px; }
   td.nome { text-align: left; font-weight: 700; background: var(--cartao); position: sticky; left: 0; z-index: 1; min-width: 190px; }
+  .nome-linha { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .lixo { background: none; border: 0; padding: 2px; margin-left: 4px; color: var(--suave); opacity: .45; cursor: pointer; line-height: 0; vertical-align: middle; border-radius: 4px; }
+  tr:hover .lixo, th:hover .lixo { opacity: .9; }
+  .lixo:hover, .lixo:focus-visible { color: #eb4848; opacity: 1; outline: none; }
+  th .lixo { display: block; margin: 3px 0 0 auto; }
+  .removidos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; font-size: .85rem; color: var(--suave); }
+  .volta { font: inherit; font-size: .82rem; color: var(--fg); background: #111816; border: 1px solid #3a4a45; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  .volta:hover { border-color: var(--verde); }
   td.nome small { display: block; color: var(--suave); font-weight: 300; font-size: .72rem; }
   td.sep, th.sep { border-left: 2px solid transparent; }
   tr.setor td { background: #00231b; color: #fff; font-weight: 800; font-size: .9rem; cursor: pointer; padding: 9px 10px; position: static; }
@@ -87,6 +95,7 @@
       <a class="botao" href="dados/retornos-anuais.csv" download style="text-decoration:none">CSV</a>
     </div>
   </div>
+  <div class="removidos" id="removidos" hidden></div>
   <div class="tabela"><table id="tab"></table></div>
   <div class="rodape" id="rodape"></div>
   <p class="aviso">Rentabilidade passada não é garantia de rentabilidade futura. Retornos brutos, sem impostos, taxas e custos; não é recomendação de investimento.</p>
@@ -106,6 +115,19 @@
     ["alternativos", "Alternativos (ouro e cripto)", ["gld", "btc"]],
   ];
   const fechados = new Set();
+  // O que o leitor tirou da tabela (lixeira): ativos e anos. Acumulado e "ao ano" passam a
+  // usar só os anos que ficaram; maior, menor e % no positivo, só os ativos que ficaram.
+  const fora = new Set(), anosFora = new Set();
+  const anosVis = () => ANOS.filter(y => !anosFora.has(y));
+  const fracao = R.anos_periodo - (ANOS.length - 1);          // fração do ano corrente
+  const nAnos = () => anosVis().reduce((n, y) => n + (y === ATUAL ? fracao : 1), 0);
+  function rotAcum() {
+    const v = anosVis();
+    if (v.length === 1) return v[0] === ATUAL ? `${v[0]} no ano` : v[0];
+    const contiguo = ANOS.indexOf(v.at(-1)) - ANOS.indexOf(v[0]) === v.length - 1;
+    return contiguo ? `${v[0]}–${v.at(-1).slice(2)}` : "anos exibidos";
+  }
+  const LIXO = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9zm4 2v8h2v-8h-2zm4 0v8h2v-8h-2z"/></svg>';
   // A sequência que vai para a tela e para a imagem: com setores, um cabeçalho por setor
   // e as linhas dele (ordenadas pela coluna escolhida); setor fechado mostra só o cabeçalho.
   function sequencia(ls) {
@@ -133,9 +155,9 @@
       if (l.id === "dolar" && moeda === "usd") v[y] = 1 / (1 + l.brl[y]) - 1;
       else v[y] = l[moeda][y];
     }
-    const acum = ANOS.reduce((f, y) => f * (1 + v[y]), 1) - 1;
+    const acum = anosVis().reduce((f, y) => f * (1 + v[y]), 1) - 1;
     return { id: l.id, nome: l.id === "dolar" && moeda === "usd" ? "Real em dólar" : l.nome, grupo: l.grupo, v,
-             acum, aa: (1 + acum) ** (1 / R.anos_periodo) - 1 };
+             acum, aa: (1 + acum) ** (1 / nAnos()) - 1 };
   }
   const chave = (x, c) => c === "acum" ? x.acum : c === "aa" ? x.aa : c === "nome" ? x.nome : x.v[c];
 
@@ -148,19 +170,21 @@
   const corTexto = x => (x != null && Math.abs(x) >= 0.3) ? "#000" : "#fff";
 
   function dados() {
-    const ls = R.linhas.map(linha);
+    const ls = R.linhas.filter(l => !fora.has(l.id)).map(linha);
+    if (ordCol !== "nome" && ordCol !== "acum" && ordCol !== "aa" && anosFora.has(ordCol)) ordCol = anosVis().at(-1);
     ls.sort((a, b) => {
       const va = chave(a, ordCol), vb = chave(b, ordCol);
       if (ordCol === "nome") return ordDesc ? vb.localeCompare(va) : va.localeCompare(vb);
       return ordDesc ? vb - va : va - vb;
     });
-    const cols = [...ANOS, "acum", "aa"];
+    const cols = [...anosVis(), "acum", "aa"];
     const maior = {}, menor = {}, positivos = {};
     for (const c of cols) {
       const xs = ls.map(l => ({ n: l.nome, v: chave(l, c) }));
-      maior[c] = xs.reduce((a, b) => b.v > a.v ? b : a);
-      menor[c] = xs.reduce((a, b) => b.v < a.v ? b : a);
-      positivos[c] = xs.filter(x => x.v > 0).length / xs.length;
+      const vazio = { n: "—", v: 0 };
+      maior[c] = xs.reduce((a, b) => b.v > a.v ? b : a, xs[0] || vazio);
+      menor[c] = xs.reduce((a, b) => b.v < a.v ? b : a, xs[0] || vazio);
+      positivos[c] = xs.length ? xs.filter(x => x.v > 0).length / xs.length : 0;
     }
     return { ls, cols, maior, menor, positivos };
   }
@@ -169,16 +193,18 @@
 
   function desenhar() {
     const { ls, cols, maior, menor, positivos } = dados();
+    const podeTirarAno = anosVis().length > 1;
     const cab = `<tr><th data-col="nome">Ativo</th>${cols.map(c => `<th data-col="${c}" class="${c === "acum" ? "sep" : ""}">${
-      c === "acum" ? `Acumulado<br>2017–${ATUAL.slice(2)}` : c === "aa" ? "Ao ano" : c === ATUAL ? `${c}<br>no ano` : c}</th>`).join("")}</tr>`;
+      c === "acum" ? `Acumulado<br>${rotAcum()}` : c === "aa" ? "Ao ano" : c === ATUAL ? `${c}<br>no ano` : c}${
+      ANOS.includes(c) && podeTirarAno ? `<button class="lixo" data-ano="${c}" title="Tirar ${c} da tabela" aria-label="Tirar ${c} da tabela">${LIXO}</button>` : ""}</th>`).join("")}</tr>`;
     const corpo = sequencia(ls).map(e => e.tipo === "setor"
       ? `<tr class="setor" data-setor="${e.id}"><td class="nome" colspan="${cols.length + 1}"><span class="seta">${e.aberto ? "▾" : "▸"}</span>${e.nome}<small>${e.n} ${e.n === 1 ? "ativo" : "ativos"}${e.aberto ? "" : " · clique para abrir"}</small></td></tr>`
-      : `<tr><td class="nome">${e.l.nome}<small>${e.l.grupo === "Ações" ? "Ação brasileira" : e.l.grupo === "EUA" ? "Exterior" : "Brasil"}</small></td>${
+      : `<tr><td class="nome"><div class="nome-linha"><div>${e.l.nome}<small>${e.l.grupo === "Ações" ? "Ação brasileira" : e.l.grupo === "EUA" ? "Exterior" : "Brasil"}</small></div><button class="lixo" data-ativo="${e.l.id}" title="Tirar ${e.l.nome} da tabela" aria-label="Tirar ${e.l.nome} da tabela">${LIXO}</button></div></td>${
       cols.map(c => { const x = chave(e.l, c); return `<td class="${c === "acum" ? "sep" : ""}" style="background:${fundo(x)};color:${corTexto(x)}${c === ATUAL ? ";font-weight:700" : ""}">${pct(x)}</td>`; }).join("")}</tr>`).join("");
     const ipca = moeda === "brl" ? (() => {
-      const acum = ANOS.reduce((f, y) => f * (1 + R.ipca[y]), 1) - 1, aa = (1 + acum) ** (1 / R.anos_periodo) - 1;
+      const acum = anosVis().reduce((f, y) => f * (1 + R.ipca[y]), 1) - 1, aa = (1 + acum) ** (1 / nAnos()) - 1;
       return `<tr class="ref"><td class="nome">IPCA (referência)<small>inflação; ${ATUAL} até ${mesBR(R.ipca_ate)}</small></td>${
-        ANOS.map(y => `<td>${pct(R.ipca[y])}</td>`).join("")}<td class="sep">${pct(acum)}</td><td>${pct(aa)}</td></tr>`;
+        anosVis().map(y => `<td>${pct(R.ipca[y])}</td>`).join("")}<td class="sep">${pct(acum)}</td><td>${pct(aa)}</td></tr>`;
     })() : "";
     const resumo = (rot, f) => `<tr class="resumo"><td class="nome">${rot}</td>${cols.map(c => `<td class="${c === "acum" ? "sep" : ""}">${f(c)}</td>`).join("")}</tr>`;
     document.getElementById("tab").innerHTML = `<thead>${cab}</thead><tbody>${corpo}${ipca}${
@@ -190,6 +216,23 @@
       desenhar();
     });
     document.getElementById("abrir-todos").hidden = !agrupar;
+    document.querySelectorAll("#tab .lixo").forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      if (b.dataset.ativo) fora.add(b.dataset.ativo); else anosFora.add(b.dataset.ano);
+      desenhar();
+    });
+    const nomeDe = id => (R.linhas.find(l => l.id === id) || {}).nome;
+    const tirados = [...[...fora].map(id => [`data-volta-ativo="${id}"`, nomeDe(id)]),
+                     ...ANOS.filter(y => anosFora.has(y)).map(y => [`data-volta-ano="${y}"`, y])];
+    const barra = document.getElementById("removidos");
+    barra.hidden = !tirados.length;
+    barra.innerHTML = tirados.length ? `Fora da tabela: ${tirados.map(([a, n]) => `<button class="volta" ${a} title="Pôr de volta">${n} <span aria-hidden="true">↺</span></button>`).join("")}<button class="botao" id="restaurar">Restaurar tudo</button>` : "";
+    barra.querySelectorAll(".volta").forEach(b => b.onclick = () => {
+      if (b.dataset.voltaAtivo) fora.delete(b.dataset.voltaAtivo); else anosFora.delete(b.dataset.voltaAno);
+      desenhar();
+    });
+    const rest = document.getElementById("restaurar");
+    if (rest) rest.onclick = () => { fora.clear(); anosFora.clear(); desenhar(); };
     document.querySelectorAll("#tab th").forEach(th => {
       if (th.dataset.col === ordCol) th.classList.add("ord", ...(ordDesc ? [] : ["cresc"]));
       th.onclick = () => { if (ordCol === th.dataset.col) ordDesc = !ordDesc; else { ordCol = th.dataset.col; ordDesc = th.dataset.col !== "nome"; } desenhar(); };
@@ -200,7 +243,7 @@
 
   document.getElementById("rodape").innerHTML = [
     `<b>Fontes:</b> Comdinheiro (Ibovespa, SMLL, IFIX, IMA-B, IRF-M, IDA-DI e ações brasileiras, ajustadas por proventos), Banco Central (CDI e PTAX), IBGE (IPCA), Yahoo Finance (SPY, QQQ, EWZ, GLD e ações da Mag 7, ajustados por dividendos) e CoinMetrics (bitcoin).`,
-    `<b>Contas:</b> cada ano vai do último dia útil do ano anterior ao último do ano; ${ATUAL} vai até ${dataBR(R.fim_b3)}, o último dia com dado em todas as fontes. Magnificent 7 é a média simples de Apple, Microsoft, Alphabet, Amazon, Nvidia, Meta e Tesla, rebalanceada todo início de ano. O EWZ é o fundo de Ibovespa negociado em Nova York, com taxa e horário de fechamento próprios. "Ao ano" é a taxa composta de ${nf(1).format(R.anos_periodo)} anos.`,
+    `<b>Contas:</b> cada ano vai do último dia útil do ano anterior ao último do ano; ${ATUAL} vai até ${dataBR(R.fim_b3)}, o último dia com dado em todas as fontes. Magnificent 7 é a média simples de Apple, Microsoft, Alphabet, Amazon, Nvidia, Meta e Tesla, rebalanceada todo início de ano. O EWZ é o fundo de Ibovespa negociado em Nova York, com taxa e horário de fechamento próprios. "Acumulado" e "Ao ano" usam os anos que estão na tabela (${ATUAL} conta como ${nf(2).format(fracao)} de ano).`,
     `Atualizado em ${R.gerado}.`
   ].map(t => `<p style="margin:0">${t}</p>`).join("");
 
@@ -249,7 +292,7 @@
     const x = i => pad + wNome + gap + i * (wCel + gap) + (cols[i] === "acum" || cols[i] === "aa" ? 8 : 0);
     let s = "";
     cols.forEach((c, i) => {
-      const [t1, t2] = c === "acum" ? ["Acumulado", `2017–${ATUAL.slice(2)}`] : c === "aa" ? ["", "Ao ano"] : c === ATUAL ? [c, "no ano"] : ["", c];
+      const [t1, t2] = c === "acum" ? ["Acumulado", rotAcum()] : c === "aa" ? ["", "Ao ano"] : c === ATUAL ? [c, "no ano"] : ["", c];
       if (t1) s += `<text x="${x(i) + wCel - 6}" y="${yTab + 4}" text-anchor="end" class="cab">${esc(t1)}</text>`;
       s += `<text x="${x(i) + wCel - 6}" y="${yTab + 20}" text-anchor="end" class="cab">${esc(t2)}</text>`;
     });
@@ -271,7 +314,7 @@
       y += hLin + gap;
     }
     if (moeda === "brl") {
-      const acum = ANOS.reduce((f, yy) => f * (1 + R.ipca[yy]), 1) - 1, aa = (1 + acum) ** (1 / R.anos_periodo) - 1;
+      const acum = anosVis().reduce((f, yy) => f * (1 + R.ipca[yy]), 1) - 1, aa = (1 + acum) ** (1 / nAnos()) - 1;
       s += `<text x="${pad}" y="${y + 20}" class="ref">IPCA (referência)</text>`;
       cols.forEach((c, i) => { const v = c === "acum" ? acum : c === "aa" ? aa : R.ipca[c]; s += celula(i, pct(v), "transparent", "#a7adb0", false); });
       y += hLin + gap;
@@ -284,7 +327,8 @@
       y += hLin + gap;
     }
     const fonte = await fonteInter();
-    const titulo = "Retorno total por ano: Brasil e EUA, 2017 a 2026";
+    const v = anosVis();
+    const titulo = `Retorno total por ano: Brasil e EUA, ${v.length > 1 ? `${v[0]} a ${v.at(-1)}` : v[0]}`;
     const sub = `Em %, com dividendos e juros reinvestidos, ${moeda === "brl" ? "em reais" : "em dólares"}; ${ATUAL} até ${dataBR(R.fim_b3)}`;
     const rod1 = "Fontes: Comdinheiro, Banco Central, IBGE, Yahoo Finance e CoinMetrics. Mag 7: média simples das sete ações, rebalanceada a cada ano.";
     const rod2 = "Rentabilidade passada não é garantia de rentabilidade futura. Sem impostos e custos. · Liberta Investimentos";
