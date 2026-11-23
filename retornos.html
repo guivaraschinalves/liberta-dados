@@ -11,7 +11,7 @@
   /* Identidade Liberta: preto, verde #1ED760, verdes-escuros, Inter. */
   :root {
     --bg: #000; --cartao: #0b0f0e; --fg: #fff; --suave: #a7adb0; --borda: #1d2a26;
-    --verde: #1ed760; --rosa: #ff5fd2;
+    --verde: #1ed760; --vermelho: #e04040;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -70,7 +70,7 @@
       <button class="botao" data-moeda="brl" aria-pressed="true">Em reais</button>
       <button class="botao" data-moeda="usd" aria-pressed="false">Em dólares</button>
     </div>
-    <span class="legenda"><i style="background:linear-gradient(90deg, rgba(255,95,210,.75), rgba(255,95,210,.12))"></i>negativo
+    <span class="legenda"><i style="background:linear-gradient(90deg, rgba(235,72,72,.75), rgba(235,72,72,.12))"></i>negativo
       <i style="background:linear-gradient(90deg, rgba(30,215,96,.12), rgba(30,215,96,.75))"></i>positivo</span>
     <div class="grupo">Baixar:
       <button class="botao" data-exp="png">PNG</button><button class="botao" data-exp="jpg">JPG</button>
@@ -108,11 +108,11 @@
   }
   const chave = (x, c) => c === "acum" ? x.acum : c === "aa" ? x.aa : c === "nome" ? x.nome : x.v[c];
 
-  // cor da célula: verde (positivo) ou rosa (negativo), mais forte quanto maior; perto de zero, quase neutra
+  // cor da célula: verde (positivo) ou vermelho (negativo), mais forte quanto maior; perto de zero, quase neutra
   function fundo(x) {
     if (x == null) return "transparent";
-    const a = Math.min(1, Math.abs(x) / 0.45) * 0.62 + 0.1;
-    return x >= 0 ? `rgba(30,215,96,${a.toFixed(3)})` : `rgba(255,95,210,${a.toFixed(3)})`;
+    const a = Math.min(1, Math.abs(x) / 0.45) * 0.58 + 0.24;
+    return x >= 0 ? `rgba(30,215,96,${a.toFixed(3)})` : `rgba(235,72,72,${a.toFixed(3)})`;
   }
   const corTexto = x => (x != null && Math.abs(x) >= 0.3) ? "#000" : "#fff";
 
