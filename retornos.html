@@ -46,7 +46,14 @@
   tr:hover .lixo, th:hover .lixo { opacity: .9; }
   .lixo:hover, .lixo:focus-visible { color: #eb4848; opacity: 1; outline: none; }
   th .lixo { display: block; margin: 3px 0 0 auto; }
-  .removidos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; font-size: .85rem; color: var(--suave); }
+  .removidos { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; margin: 0 0 12px; font-size: .85rem; color: var(--suave); }
+  .removidos details { flex: 1 1 auto; }
+  .removidos summary { cursor: pointer; padding: 5px 0; list-style: none; }
+  .removidos summary::-webkit-details-marker { display: none; }
+  .removidos summary::before { content: "▸"; color: var(--verde); display: inline-block; width: 1.1em; }
+  .removidos details[open] summary::before { content: "▾"; }
+  .removidos summary b { color: var(--fg); }
+  .itens-fora { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 2px 1.1em; }
   .volta { font: inherit; font-size: .82rem; color: var(--fg); background: #111816; border: 1px solid #3a4a45; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
   .volta:hover { border-color: var(--verde); }
   td.nome small { display: block; color: var(--suave); font-weight: 300; font-size: .72rem; }
@@ -118,6 +125,7 @@
   // O que o leitor tirou da tabela (lixeira): ativos e anos. Acumulado e "ao ano" passam a
   // usar só os anos que ficaram; maior, menor e % no positivo, só os ativos que ficaram.
   const fora = new Set(), anosFora = new Set();
+  let listaForaAberta = false;                                 // a lista retrátil do que saiu
   const anosVis = () => ANOS.filter(y => !anosFora.has(y));
   const fracao = R.anos_periodo - (ANOS.length - 1);          // fração do ano corrente
   const nAnos = () => anosVis().reduce((n, y) => n + (y === ATUAL ? fracao : 1), 0);
@@ -226,7 +234,16 @@
                      ...ANOS.filter(y => anosFora.has(y)).map(y => [`data-volta-ano="${y}"`, y])];
     const barra = document.getElementById("removidos");
     barra.hidden = !tirados.length;
-    barra.innerHTML = tirados.length ? `Fora da tabela: ${tirados.map(([a, n]) => `<button class="volta" ${a} title="Pôr de volta">${n} <span aria-hidden="true">↺</span></button>`).join("")}<button class="botao" id="restaurar">Restaurar tudo</button>` : "";
+    const qtd = tirados.length, rotQtd = `${qtd} ${qtd === 1 ? "item" : "itens"}`;
+    barra.innerHTML = qtd ? `<details id="lista-fora"${listaForaAberta ? " open" : ""}>
+        <summary>Fora da tabela: <b>${rotQtd}</b></summary>
+        <div class="itens-fora">${tirados.map(([a, n]) => `<button class="volta" ${a} title="Pôr de volta">${n} <span aria-hidden="true">↺</span></button>`).join("")}</div>
+      </details><button class="botao" id="restaurar">Restaurar tudo</button>` : "";
+    const det = document.getElementById("lista-fora");
+    if (det) {
+      det.querySelector("summary").onclick = () => { listaForaAberta = !det.open; };
+      det.ontoggle = () => { listaForaAberta = det.open; };
+    }
     barra.querySelectorAll(".volta").forEach(b => b.onclick = () => {
       if (b.dataset.voltaAtivo) fora.delete(b.dataset.voltaAtivo); else anosFora.delete(b.dataset.voltaAno);
       desenhar();
