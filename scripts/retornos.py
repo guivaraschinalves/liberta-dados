@@ -174,6 +174,39 @@ def retornos_por_ano(serie, fim_atual):
     return out, datas
 
 
+def fins_de_mes(fim):
+    """[("2017-01", data), ...] até o mês de `fim`; o último mês acaba em `fim`."""
+    out, y, m = [], ANOS[0], 1
+    while (y, m) <= (fim.year, fim.month):
+        prox = dt.date(y + (m == 12), m % 12 + 1, 1)
+        out.append((f"{y}-{m:02d}", min(prox - dt.timedelta(days=1), fim)))
+        y, m = prox.year, prox.month
+    return out
+
+
+def niveis_mensais(serie, meses):
+    """Nível no fim de dez do ano anterior ao primeiro e no fim de cada mês, com as datas usadas."""
+    d0 = ultimo_ate(serie, dt.date(ANOS[0] - 1, 12, 31))
+    ds = [d0] + [ultimo_ate(serie, d) for _, d in meses]
+    return [serie[d] for d in ds], ds
+
+
+def niveis_mag7(yh, meses):
+    """Índice da Mag 7 com pesos iguais rebalanceados todo 1º de janeiro (a mesma
+    regra da tabela anual): dentro do ano, a média de quanto cada ação andou desde
+    o fim do ano anterior."""
+    base_ano, nivel, saida, ds = {}, 1.0, [1.0], [ultimo_ate(yh["AAPL"], dt.date(ANOS[0] - 1, 12, 31))]
+    for mes, d in meses:
+        y = int(mes[:4])
+        if y not in base_ano:
+            base_ano[y] = (nivel, {s: yh[s][ultimo_ate(yh[s], dt.date(y - 1, 12, 31))] for s in MAG7})
+        n0, p0 = base_ano[y]
+        nivel = n0 * sum(yh[s][ultimo_ate(yh[s], d)] / p0[s] for s in MAG7) / len(MAG7)
+        saida.append(nivel)
+        ds.append(ultimo_ate(yh["AAPL"], d))
+    return saida, ds
+
+
 def main():
     BRUTO.mkdir(parents=True, exist_ok=True)
     hoje = dt.date.today()
@@ -221,8 +254,20 @@ def main():
             r = {y: sum(por[s][0][y] for s in MAG7) / len(MAG7) for y in ANOS}
             datas = por["AAPL"][1]
             fim = fim_eua
+            niv, nds = niveis_mag7(yh, fins_de_mes(fim))
         else:
             r, datas = retornos_por_ano(serie, fim)
+            niv, nds = niveis_mensais(serie, fins_de_mes(fim))
+        # retornos mensais, em reais e em dólares (o produto dos meses de um ano dá o anual)
+        mbrl, musd = [], []
+        for i in range(1, len(niv)):
+            rm, camb = niv[i] / niv[i - 1] - 1, fx(nds[i]) / fx(nds[i - 1])
+            if id_ == "dolar":
+                mbrl.append(rm); musd.append(None)
+            elif moeda == "USD":
+                musd.append(rm); mbrl.append((1 + rm) * camb - 1)
+            else:
+                mbrl.append(rm); musd.append((1 + rm) / camb - 1)
         # em reais e em dólares
         brl, usd = {}, {}
         for y in ANOS:
@@ -237,7 +282,20 @@ def main():
         linhas.append(dict(id=id_, nome=nome, grupo=grupo, moeda=moeda,
                            fim=fim.isoformat(),
                            brl={str(y): round(v, 6) for y, v in brl.items()},
-                           usd={str(y): (round(v, 6) if v is not None else None) for y, v in usd.items()}))
+                           usd={str(y): (round(v, 6) if v is not None else None) for y, v in usd.items()},
+                           mbrl=[round(v, 6) for v in mbrl],
+                           musd=[(round(v, 6) if v is not None else None) for v in musd]))
+        # conferência: os meses de cada ano compõem o retorno anual
+        for y in ANOS:
+            for nome_m, anual, mens in (("brl", brl, mbrl), ("usd", usd, musd)):
+                if anual[y] is None:
+                    continue
+                f = 1.0
+                for (mes, _), v in zip(fins_de_mes(fim), mens):
+                    if mes.startswith(str(y)):
+                        f *= 1 + v
+                if abs(f - 1 - anual[y]) > 1e-6:
+                    raise SystemExit(f"{nome} {y} {nome_m}: meses dão {f - 1:.6f}, ano dá {anual[y]:.6f}")
 
     # IPCA como referência (não entra no ranking): dez/dez, e no ano até o último mês
     ult = max(ip)
@@ -246,6 +304,10 @@ def main():
     doc = dict(gerado=dt.datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M"),
                anos=ANOS, fim_b3=fim_br.isoformat(), fim_eua=fim_eua.isoformat(), fim_ptax=fim_ptax.isoformat(),
                ipca=ipca_r, ipca_ate=ult.isoformat(), anos_periodo=round(len(ANOS) - 1 + dias_ano / 365.25, 4),
+               meses=[m for m, _ in fins_de_mes(fim_br)],
+               ipca_m=[(round(ip[dt.date(int(m[:4]), int(m[5:]), 1)] / ip[dt.date(int(m[:4]) - (m[5:] == "01"),
+                                                                       (int(m[5:]) - 2) % 12 + 1, 1)] - 1, 6)
+                        if dt.date(int(m[:4]), int(m[5:]), 1) in ip else None) for m, _ in fins_de_mes(fim_br)],
                linhas=linhas)
     (DADOS / "retornos.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
 

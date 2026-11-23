@@ -306,14 +306,25 @@
   // ---------- Gráfico do retorno acumulado (ativos e anos que estão na tabela) ----------
   function seriesGrafico() {
     const { ls } = dados();
-    const vis = anosVis(), x0 = String(+vis[0] - 1);
-    const acumula = val => { let i = 100; return [[x0, 100], ...vis.map(y => [y, i *= 1 + val(y)])]; };
-    const series = ls.map(l => ({ id: l.id, nome: l.nome, pts: acumula(y => l.v[y]) }));
-    const ipca = moeda === "brl" ? { id: "ipca", nome: "IPCA", pts: acumula(y => R.ipca[y]) } : null;
+    // mês a mês: os meses dos anos que estão na tabela, a partir do fim de dez do ano anterior ao primeiro
+    const vis = anosVis(), x0 = `${+vis[0] - 1}-12`;
+    const meses = R.meses.map((m, k) => [m, k]).filter(([m]) => vis.includes(m.slice(0, 4)));
+    const acumula = arr => {
+      let i = 100; const pts = [[x0, 100]];
+      for (const [m, k] of meses) { if (arr[k] == null) break; pts.push([m, i *= 1 + arr[k]]); }
+      return pts;
+    };
+    const mensal = id => {
+      const l = R.linhas.find(x => x.id === id);
+      if (l.id === "dolar" && moeda === "usd") return l.mbrl.map(r => 1 / (1 + r) - 1);
+      return moeda === "brl" ? l.mbrl : l.musd;
+    };
+    const series = ls.map(l => ({ id: l.id, nome: l.nome, pts: acumula(mensal(l.id)) }));
+    const ipca = moeda === "brl" ? { id: "ipca", nome: "IPCA", pts: acumula(R.ipca_m) } : null;
     // destaques: some quem saiu da tabela; se nenhum, os 4 primeiros na ordem da tabela
     for (const id of [...destaqueG.keys()]) if (!ls.some(l => l.id === id)) destaqueG.delete(id);
     if (!destaqueG.size) ls.slice(0, 4).forEach((l, k) => destaqueG.set(l.id, CORES_G[k]));
-    return { series, ipca, xs: [x0, ...vis] };
+    return { series, ipca, xs: [x0, ...meses.map(([m]) => m)] };
   }
   function alternarDestaque(id) {
     if (destaqueG.has(id)) destaqueG.delete(id);
@@ -324,7 +335,7 @@
     desenharGrafico();
   }
   const pctAcum = v => { const x = v / 100 - 1; return (x < 0 ? "−" : "+") + (Math.abs(x) >= 10 ? nf(0) : nf(1)).format(Math.abs(x * 100)) + "%"; };
-  const rotX = (x, i) => i === 0 ? `fim de ${x}` : x === ATUAL ? `${x}*` : x;
+  const rotMes = x => mesBR(x + "-01");
 
   // Desenha o SVG do gráfico (o mesmo vai para a tela e para a imagem baixada)
   function svgGrafico(W, comInteracao) {
@@ -351,7 +362,15 @@
       el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: v === 100 ? "#3a4a45" : "#18201e", "stroke-width": 1 });
       txt(nf(0).format(v), { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 11.5, fill: "#a7adb0" });
     }
-    xs.forEach((x, i) => txt(rotX(x, i), { x: X(i), y: H - 10, "text-anchor": "middle", "font-size": 11.5, fill: "#a7adb0" }));
+    // um rótulo por ano, em janeiro, com uma linha fina separando os anos
+    const passoAno = Math.max(1, Math.ceil(xs.filter(x => x.endsWith("-01")).length / Math.max(1, Math.floor((W - m.l - m.r) / 60))));
+    xs.forEach((x, i) => {
+      if (!x.endsWith("-01") || i === 0) return;
+      el("line", { x1: X(i - 0.5), x2: X(i - 0.5), y1: m.t, y2: H - m.b, stroke: "#18201e", "stroke-width": 1 });
+      const ano = x.slice(0, 4);
+      if ((+ano - +xs[1].slice(0, 4)) % passoAno === 0)
+        txt(ano === ATUAL ? `${ano}*` : ano, { x: X(i), y: H - 10, "text-anchor": "start", "font-size": 11.5, fill: "#a7adb0" });
+    });
     const caminho = pts => pts.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
     // linhas: demais em cinza, IPCA tracejado, destaques por cima
     const outros = series.filter(s => !destaqueG.has(s.id)), dest = series.filter(s => destaqueG.has(s.id));
@@ -372,7 +391,7 @@
       const cor = destaqueG.get(s.id);
       el("path", { d: caminho(s.pts), fill: "none", stroke: "#0b0f0e", "stroke-width": 5.5, "stroke-linejoin": "round" });
       el("path", { d: caminho(s.pts), fill: "none", stroke: cor, "stroke-width": 2.6, "stroke-linejoin": "round" });
-      s.pts.forEach((p, i) => el("circle", { cx: X(i), cy: Y(p[1]), r: 3, fill: cor }));
+      el("circle", { cx: X(s.pts.length - 1), cy: Y(s.pts.at(-1)[1]), r: 3.5, fill: cor });
       rotulos.push({ y: Y(s.pts.at(-1)[1]), t: `${curtoNome(s.nome)} ${pctAcum(s.pts.at(-1)[1])}`, cor: "#fff", forte: true, marca: cor });
     }
     if (W >= 600) {
@@ -391,8 +410,9 @@
         const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
         const i = Math.max(0, Math.min(xs.length - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, xs.length - 1)))));
         cruz.setAttribute("x1", X(i)); cruz.setAttribute("x2", X(i)); cruz.setAttribute("opacity", .6);
-        const lin = [...series, ...(ipca ? [ipca] : [])].map(s => ({ s, v: s.pts[i][1] })).sort((a, b) => b.v - a.v);
-        dica.innerHTML = `<b>${i === 0 ? `Início: fim de ${xs[0]}` : xs[i] === ATUAL ? `${xs[i]}, até ${dataBR(R.fim_b3)}` : `Fim de ${xs[i]}`}</b>` +
+        const lin = [...series, ...(ipca ? [ipca] : [])].filter(s => s.pts[i]).map(s => ({ s, v: s.pts[i][1] })).sort((a, b) => b.v - a.v);
+        const ultimo = i === xs.length - 1 && xs[i] === R.meses.at(-1);
+        dica.innerHTML = `<b>${i === 0 ? `Início: fim de ${rotMes(xs[0])}` : ultimo ? `${rotMes(xs[i])}, até ${dataBR(R.fim_b3)}` : `Fim de ${rotMes(xs[i])}`}</b>` +
           lin.map(({ s, v }) => `<div class="l"><span>${destaqueG.has(s.id) ? `<i style="background:${destaqueG.get(s.id)}"></i>` : ""}${curtoNome(s.nome)}</span><span>${pctAcum(v)}</span></div>`).join("");
         dica.style.display = "block";
         const w = dica.offsetWidth, h = dica.offsetHeight;
@@ -411,7 +431,7 @@
     box.innerHTML = "";
     if (!R.linhas.some(l => !fora.has(l.id))) { box.textContent = "Nenhum ativo na tabela."; return; }
     box.appendChild(svgGrafico(W, true).svg);
-    document.getElementById("tit-graf").textContent = `Retorno acumulado, ${rotAcum()}`;
+    document.getElementById("tit-graf").textContent = `Retorno acumulado mês a mês, ${rotAcum()}`;
     document.getElementById("sub-graf").textContent =
       `Quanto viram 100 aplicados no fim de ${+anosVis()[0] - 1}, ${moeda === "brl" ? "em reais" : "em dólares"}, com dividendos e juros reinvestidos; * ${ATUAL} até ${dataBR(R.fim_b3)}`;
     document.querySelectorAll("[data-escala]").forEach(b => b.setAttribute("aria-pressed", b.dataset.escala === escalaG));
@@ -559,7 +579,7 @@ ${s}
     const pad = 28, topo = 96, H = topo + GH + 64, T = W + 2 * pad;
     g.setAttribute("x", pad); g.setAttribute("y", topo);
     const vis = anosVis();
-    const titulo = `Retorno acumulado, ${rotAcum()}`;
+    const titulo = `Retorno acumulado mês a mês, ${rotAcum()}`;
     const sub = `Quanto viram 100 aplicados no fim de ${+vis[0] - 1}, ${moeda === "brl" ? "em reais" : "em dólares"}, com dividendos e juros reinvestidos; * ${ATUAL} até ${dataBR(R.fim_b3)}`;
     const fonte = await fonteInter();
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${H}" viewBox="0 0 ${T} ${H}">
