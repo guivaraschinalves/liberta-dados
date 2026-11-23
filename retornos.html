@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retorno total por ano</title>
+<meta name="description" content="Retorno total por ano, 2017 a 2026, de renda fixa, bolsa, ações, dólar, ouro, bitcoin e índices americanos, em reais ou em dólares.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap">
+<style>
+  /* Identidade Liberta: preto, verde #1ED760, verdes-escuros, Inter. */
+  :root {
+    --bg: #000; --cartao: #0b0f0e; --fg: #fff; --suave: #a7adb0; --borda: #1d2a26;
+    --verde: #1ed760; --rosa: #ff5fd2;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Inter", Arial, sans-serif; line-height: 1.5; }
+  .topo { background: radial-gradient(120% 140% at 100% 0%, rgba(30,215,96,.45) 0%, rgba(0,52,42,.5) 30%, rgba(0,0,0,0) 62%), #000; }
+  main { max-width: 1280px; margin: 0 auto; padding: 0 16px 48px; }
+  .marca { display: flex; justify-content: space-between; align-items: end; gap: 12px; padding: 22px 0 10px; font-size: .92rem;
+    border-bottom: 1px solid transparent; border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; }
+  .marca nav { display: flex; gap: 14px; }
+  .marca a { color: var(--suave); text-decoration: none; }
+  .marca a.atual, .marca a:hover { color: var(--verde); }
+  header { padding: 34px 0 20px; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.5rem); line-height: 1.1; margin: 0 0 10px; font-weight: 800; letter-spacing: -.02em; }
+  h1 em { font-style: normal; color: var(--verde); }
+  .sub { color: var(--suave); font-weight: 300; margin: 0; max-width: 80ch; }
+  .controles { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 18px 0 14px; font-size: .9rem; color: var(--suave); }
+  .grupo { display: flex; gap: 6px; align-items: center; }
+  .botao { font: inherit; color: var(--fg); background: transparent; border: 1px solid #3a4a45; border-radius: 999px; padding: 5px 13px; cursor: pointer; }
+  .botao:hover { border-color: var(--verde); }
+  .botao[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #000; font-weight: 700; }
+  .botao[disabled] { opacity: .5; cursor: wait; }
+  .tabela { overflow-x: auto; border: 1px solid var(--borda); border-radius: 12px; background: var(--cartao); }
+  table { border-collapse: separate; border-spacing: 2px; width: 100%; font-size: .84rem; font-variant-numeric: tabular-nums; padding: 6px; }
+  th { font-weight: 700; color: var(--verde); font-size: .78rem; padding: 6px 6px; text-align: right; white-space: nowrap; cursor: pointer; user-select: none; }
+  th:first-child { text-align: left; }
+  th.ord::after { content: " ▾"; color: var(--fg); }
+  th.ord.cresc::after { content: " ▴"; }
+  td { padding: 6px 7px; text-align: right; white-space: nowrap; border-radius: 4px; }
+  td.nome { text-align: left; font-weight: 700; background: var(--cartao); position: sticky; left: 0; z-index: 1; min-width: 190px; }
+  td.nome small { display: block; color: var(--suave); font-weight: 300; font-size: .72rem; }
+  td.sep, th.sep { border-left: 2px solid transparent; }
+  tr.resumo td { background: #111816; font-weight: 700; color: #d7dbdd; }
+  tr.resumo td.nome { color: var(--suave); }
+  tr.ref td { color: var(--suave); font-style: italic; }
+  tr.primeiro-resumo td { border-top: 0; }
+  .ponto { width: 100%; height: 10px; }
+  .rodape { color: var(--suave); font-size: .78rem; font-weight: 300; margin-top: 14px; display: grid; gap: 6px; max-width: 110ch; }
+  .rodape a { color: var(--verde); }
+  .aviso { border: 1px solid var(--verde); border-radius: 12px; padding: 12px 16px; color: #d7dbdd; font-size: .86rem; margin-top: 16px; }
+  .legenda { display: inline-flex; gap: 12px; align-items: center; }
+  .legenda i { display: inline-block; width: 28px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="topo"><main style="padding-bottom:8px">
+  <div class="marca"><span>Liberta Investimentos</span>
+    <nav><a href="index.html">R$ 100 mil desde 2013</a><a href="retornos.html" class="atual">Retorno por ano</a></nav></div>
+  <header>
+    <h1>Retorno total por ano: <em>Brasil e EUA, 2017 a 2026</em></h1>
+    <p class="sub" id="sub"></p>
+  </header>
+</main></div>
+<main>
+  <div class="controles">
+    <div class="grupo">Moeda:
+      <button class="botao" data-moeda="brl" aria-pressed="true">Em reais</button>
+      <button class="botao" data-moeda="usd" aria-pressed="false">Em dólares</button>
+    </div>
+    <span class="legenda"><i style="background:linear-gradient(90deg, rgba(255,95,210,.75), rgba(255,95,210,.12))"></i>negativo
+      <i style="background:linear-gradient(90deg, rgba(30,215,96,.12), rgba(30,215,96,.75))"></i>positivo</span>
+    <div class="grupo">Baixar:
+      <button class="botao" data-exp="png">PNG</button><button class="botao" data-exp="jpg">JPG</button>
+      <button class="botao" data-exp="svg">SVG</button><button class="botao" data-exp="pdf">PDF</button>
+      <a class="botao" href="dados/retornos-anuais.csv" download style="text-decoration:none">CSV</a>
+    </div>
+  </div>
+  <div class="tabela"><table id="tab"></table></div>
+  <div class="rodape" id="rodape"></div>
+  <p class="aviso">Rentabilidade passada não é garantia de rentabilidade futura. Retornos brutos, sem impostos, taxas e custos; não é recomendação de investimento.</p>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(async function () {
+  const R = await (await fetch("dados/retornos.json", { cache: "no-cache" })).json();
+  const ANOS = R.anos.map(String), ATUAL = ANOS.at(-1);
+  let moeda = "brl", ordCol = ATUAL, ordDesc = true;
+  const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = x => x == null ? "—" : (x < 0 ? "−" : "") + (Math.abs(x) >= 10 ? nf(0) : nf(1)).format(Math.abs(x * 100)) + "%";
+  const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
+  const mesBR = s => ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+s.slice(5, 7) - 1] + "/" + s.slice(0, 4);
+  const rotAno = y => y === ATUAL ? `${y} (no ano)` : y;
+
+  // valores de uma linha na moeda escolhida (o dólar, em dólares, vira "o real em dólar")
+  function linha(l) {
+    const v = {};
+    for (const y of ANOS) {
+      if (l.id === "dolar" && moeda === "usd") v[y] = 1 / (1 + l.brl[y]) - 1;
+      else v[y] = l[moeda][y];
+    }
+    const acum = ANOS.reduce((f, y) => f * (1 + v[y]), 1) - 1;
+    return { id: l.id, nome: l.id === "dolar" && moeda === "usd" ? "Real em dólar" : l.nome, grupo: l.grupo, v,
+             acum, aa: (1 + acum) ** (1 / R.anos_periodo) - 1 };
+  }
+  const chave = (x, c) => c === "acum" ? x.acum : c === "aa" ? x.aa : c === "nome" ? x.nome : x.v[c];
+
+  // cor da célula: verde (positivo) ou rosa (negativo), mais forte quanto maior; perto de zero, quase neutra
+  function fundo(x) {
+    if (x == null) return "transparent";
+    const a = Math.min(1, Math.abs(x) / 0.45) * 0.62 + 0.1;
+    return x >= 0 ? `rgba(30,215,96,${a.toFixed(3)})` : `rgba(255,95,210,${a.toFixed(3)})`;
+  }
+  const corTexto = x => (x != null && Math.abs(x) >= 0.3) ? "#000" : "#fff";
+
+  function dados() {
+    const ls = R.linhas.map(linha);
+    ls.sort((a, b) => {
+      const va = chave(a, ordCol), vb = chave(b, ordCol);
+      if (ordCol === "nome") return ordDesc ? vb.localeCompare(va) : va.localeCompare(vb);
+      return ordDesc ? vb - va : va - vb;
+    });
+    const cols = [...ANOS, "acum", "aa"];
+    const maior = {}, menor = {}, positivos = {};
+    for (const c of cols) {
+      const xs = ls.map(l => ({ n: l.nome, v: chave(l, c) }));
+      maior[c] = xs.reduce((a, b) => b.v > a.v ? b : a);
+      menor[c] = xs.reduce((a, b) => b.v < a.v ? b : a);
+      positivos[c] = xs.filter(x => x.v > 0).length / xs.length;
+    }
+    return { ls, cols, maior, menor, positivos };
+  }
+  const curtoNome = n => n.replace(/ \(.*\)$/, "").replace("Ibovespa em dólar", "EWZ").replace("Fundos imobiliários", "IFIX")
+    .replace("Small caps", "SMLL").replace("Banco do Brasil", "BB").replace("Magnificent 7", "Mag 7").replace("Real em dólar", "Real");
+
+  function desenhar() {
+    const { ls, cols, maior, menor, positivos } = dados();
+    const cab = `<tr><th data-col="nome">Ativo</th>${cols.map(c => `<th data-col="${c}" class="${c === "acum" ? "sep" : ""}">${
+      c === "acum" ? `Acumulado<br>2017–${ATUAL.slice(2)}` : c === "aa" ? "Ao ano" : c === ATUAL ? `${c}<br>no ano` : c}</th>`).join("")}</tr>`;
+    const corpo = ls.map(l => `<tr><td class="nome">${l.nome}<small>${l.grupo === "Ações" ? "Ação brasileira" : l.grupo === "EUA" ? "Exterior" : "Brasil"}</small></td>${
+      cols.map(c => { const x = chave(l, c); return `<td class="${c === "acum" ? "sep" : ""}" style="background:${fundo(x)};color:${corTexto(x)}${c === ATUAL ? ";font-weight:700" : ""}">${pct(x)}</td>`; }).join("")}</tr>`).join("");
+    const ipca = moeda === "brl" ? (() => {
+      const acum = ANOS.reduce((f, y) => f * (1 + R.ipca[y]), 1) - 1, aa = (1 + acum) ** (1 / R.anos_periodo) - 1;
+      return `<tr class="ref"><td class="nome">IPCA (referência)<small>inflação; ${ATUAL} até ${mesBR(R.ipca_ate)}</small></td>${
+        ANOS.map(y => `<td>${pct(R.ipca[y])}</td>`).join("")}<td class="sep">${pct(acum)}</td><td>${pct(aa)}</td></tr>`;
+    })() : "";
+    const resumo = (rot, f) => `<tr class="resumo"><td class="nome">${rot}</td>${cols.map(c => `<td class="${c === "acum" ? "sep" : ""}">${f(c)}</td>`).join("")}</tr>`;
+    document.getElementById("tab").innerHTML = `<thead>${cab}</thead><tbody>${corpo}${ipca}${
+      resumo("Maior retorno", c => curtoNome(maior[c].n))}${resumo("Menor retorno", c => curtoNome(menor[c].n))}${
+      resumo("% dos ativos no positivo", c => nf(0).format(positivos[c] * 100) + "%")}</tbody>`;
+    document.querySelectorAll("#tab th").forEach(th => {
+      if (th.dataset.col === ordCol) th.classList.add("ord", ...(ordDesc ? [] : ["cresc"]));
+      th.onclick = () => { if (ordCol === th.dataset.col) ordDesc = !ordDesc; else { ordCol = th.dataset.col; ordDesc = th.dataset.col !== "nome"; } desenhar(); };
+    });
+    document.getElementById("sub").textContent =
+      `Retorno total em %, com dividendos e juros reinvestidos, ${moeda === "brl" ? "em reais (ativos em dólar convertidos pela PTAX)" : "em dólares (ativos em reais convertidos pela PTAX)"}; ${ATUAL} até ${dataBR(R.fim_b3)}`;
+  }
+
+  document.getElementById("rodape").innerHTML = [
+    `<b>Fontes:</b> Comdinheiro (Ibovespa, SMLL, IFIX, IMA-B, IRF-M, IDA-DI e ações brasileiras, ajustadas por proventos), Banco Central (CDI e PTAX), IBGE (IPCA), Yahoo Finance (SPY, QQQ, EWZ, GLD e ações da Mag 7, ajustados por dividendos) e CoinMetrics (bitcoin).`,
+    `<b>Contas:</b> cada ano vai do último dia útil do ano anterior ao último do ano; ${ATUAL} vai até ${dataBR(R.fim_b3)}, o último dia com dado em todas as fontes. Magnificent 7 é a média simples de Apple, Microsoft, Alphabet, Amazon, Nvidia, Meta e Tesla, rebalanceada todo início de ano. O EWZ é o fundo de Ibovespa negociado em Nova York, com taxa e horário de fechamento próprios. "Ao ano" é a taxa composta de ${nf(1).format(R.anos_periodo)} anos.`,
+    `Atualizado em ${R.gerado}.`
+  ].map(t => `<p style="margin:0">${t}</p>`).join("");
+
+  document.querySelectorAll("[data-moeda]").forEach(b => b.onclick = () => {
+    moeda = b.dataset.moeda;
+    document.querySelectorAll("[data-moeda]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    desenhar();
+  });
+  desenhar();
+
+  // ---------- Baixar a tabela como imagem (SVG desenhado aqui; PNG, JPG e PDF a partir dele) ----------
+  let fonteEmbutida = null;
+  async function fonteInter() {
+    if (fonteEmbutida !== null) return fonteEmbutida;
+    try {
+      const css = await (await fetch("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap")).text();
+      let saida = "";
+      for (const b of css.split("/*").filter(b => /^\s*latin(-ext)?\s*\*\//.test(b)).map(b => "/*" + b)) {
+        const url = (b.match(/url\((https:[^)]+)\)/) || [])[1];
+        if (!url) continue;
+        const buf = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        let bin = ""; for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
+        saida += b.replace(url, "data:font/woff2;base64," + btoa(bin));
+      }
+      fonteEmbutida = saida;
+    } catch (e) { fonteEmbutida = ""; }
+    return fonteEmbutida;
+  }
+  const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  async function montarSVG() {
+    const { ls, cols, maior, menor, positivos } = dados();
+    const pad = 28, wNome = 220, wCel = 74, hLin = 30, gap = 2;
+    const W = pad * 2 + wNome + cols.length * (wCel + gap) + 8;
+    const yTab = 124, linhas = ls.length + (moeda === "brl" ? 1 : 0) + 3;
+    const H = yTab + hLin + linhas * (hLin + gap) + 84;
+    const x = i => pad + wNome + gap + i * (wCel + gap) + (cols[i] === "acum" || cols[i] === "aa" ? 8 : 0);
+    let s = "";
+    cols.forEach((c, i) => {
+      const [t1, t2] = c === "acum" ? ["Acumulado", `2017–${ATUAL.slice(2)}`] : c === "aa" ? ["", "Ao ano"] : c === ATUAL ? [c, "no ano"] : ["", c];
+      if (t1) s += `<text x="${x(i) + wCel - 6}" y="${yTab + 4}" text-anchor="end" class="cab">${esc(t1)}</text>`;
+      s += `<text x="${x(i) + wCel - 6}" y="${yTab + 20}" text-anchor="end" class="cab">${esc(t2)}</text>`;
+    });
+    s += `<text x="${pad}" y="${yTab + 20}" class="cab">Ativo</text>`;
+    let y = yTab + hLin;
+    const celula = (i, txt, bg, cor, negrito) =>
+      `<rect x="${x(i)}" y="${y}" width="${wCel}" height="${hLin}" rx="4" fill="${bg}"/>` +
+      `<text x="${x(i) + wCel - 7}" y="${y + 20}" text-anchor="end" fill="${cor}" font-weight="${negrito ? 700 : 400}" class="n">${esc(txt)}</text>`;
+    for (const l of ls) {
+      s += `<text x="${pad}" y="${y + 20}" class="nome">${esc(l.nome)}</text>`;
+      cols.forEach((c, i) => { const v = chave(l, c); s += celula(i, pct(v), fundo(v), corTexto(v), c === ATUAL); });
+      y += hLin + gap;
+    }
+    if (moeda === "brl") {
+      const acum = ANOS.reduce((f, yy) => f * (1 + R.ipca[yy]), 1) - 1, aa = (1 + acum) ** (1 / R.anos_periodo) - 1;
+      s += `<text x="${pad}" y="${y + 20}" class="ref">IPCA (referência)</text>`;
+      cols.forEach((c, i) => { const v = c === "acum" ? acum : c === "aa" ? aa : R.ipca[c]; s += celula(i, pct(v), "transparent", "#a7adb0", false); });
+      y += hLin + gap;
+    }
+    for (const [rot, f] of [["Maior retorno", c => curtoNome(maior[c].n)], ["Menor retorno", c => curtoNome(menor[c].n)],
+                            ["% no positivo", c => nf(0).format(positivos[c] * 100) + "%"]]) {
+      s += `<rect x="${pad - 4}" y="${y}" width="${W - 2 * pad + 8}" height="${hLin}" rx="4" fill="#111816"/>`;
+      s += `<text x="${pad}" y="${y + 20}" class="ref" font-style="normal">${rot}</text>`;
+      cols.forEach((c, i) => { s += `<text x="${x(i) + wCel - 7}" y="${y + 20}" text-anchor="end" class="res">${esc(f(c))}</text>`; });
+      y += hLin + gap;
+    }
+    const fonte = await fonteInter();
+    const titulo = "Retorno total por ano: Brasil e EUA, 2017 a 2026";
+    const sub = `Em %, com dividendos e juros reinvestidos, ${moeda === "brl" ? "em reais" : "em dólares"}; ${ATUAL} até ${dataBR(R.fim_b3)}`;
+    const rod1 = "Fontes: Comdinheiro, Banco Central, IBGE, Yahoo Finance e CoinMetrics. Mag 7: média simples das sete ações, rebalanceada a cada ano.";
+    const rod2 = "Rentabilidade passada não é garantia de rentabilidade futura. Sem impostos e custos. · Liberta Investimentos";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<style>${fonte}
+text { font-family: Inter, Arial, sans-serif; fill: #fff; font-size: 13px; }
+.t { font-size: 26px; font-weight: 800; } .s { font-size: 15px; font-weight: 300; fill: #a7adb0; }
+.cab { font-size: 12px; font-weight: 700; fill: #1ed760; } .nome { font-weight: 700; } .n { font-size: 13px; }
+.ref { fill: #a7adb0; font-style: italic; } .res { fill: #d7dbdd; font-weight: 700; font-size: 12px; }
+.r { font-size: 11.5px; font-weight: 300; fill: #a7adb0; }
+</style>
+<rect width="${W}" height="${H}" fill="#0b0f0e"/>
+<rect width="${W}" height="3" fill="#1ed760"/>
+<text x="${pad}" y="${pad + 28}" class="t">${esc(titulo)}</text>
+<text x="${pad}" y="${pad + 56}" class="s">${esc(sub)}</text>
+${s}
+<text x="${pad}" y="${H - 40}" class="r">${esc(rod1)}</text>
+<text x="${pad}" y="${H - 22}" class="r">${esc(rod2)}</text>
+</svg>`;
+    return { W, H, svg };
+  }
+  function rasterizar(svg, W, H, escala, tipo) {
+    return new Promise((ok, erro) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas"); c.width = W * escala; c.height = H * escala;
+        const ctx = c.getContext("2d"); ctx.scale(escala, escala); ctx.drawImage(img, 0, 0, W, H);
+        ok(c.toDataURL(tipo, 0.93));
+      };
+      img.onerror = () => erro(new Error("falha ao desenhar o SVG"));
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  }
+  const baixarURL = (url, nome) => { const a = document.createElement("a"); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); };
+  async function exportar(fmt) {
+    const { W, H, svg } = await montarSVG();
+    const nome = `retorno-por-ano-2017-2026-${moeda === "brl" ? "reais" : "dolares"}`;
+    if (fmt === "svg") return baixarURL(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), nome + ".svg");
+    if (fmt === "png") return baixarURL(await rasterizar(svg, W, H, 2.5, "image/png"), nome + ".png");
+    const jpg = await rasterizar(svg, W, H, 2.5, "image/jpeg");
+    if (fmt === "jpg") return baixarURL(jpg, nome + ".jpg");
+    const pdf = new window.jspdf.jsPDF({ orientation: W > H ? "landscape" : "portrait", unit: "pt", format: [W * .75, H * .75], compress: true });
+    pdf.addImage(jpg, "JPEG", 0, 0, W * .75, H * .75);
+    pdf.save(nome + ".pdf");
+  }
+  window._exportar = { montarSVG, rasterizar };
+  document.querySelectorAll("[data-exp]").forEach(b => b.onclick = async () => {
+    const bs = document.querySelectorAll("[data-exp]"); bs.forEach(x => x.disabled = true);
+    try { await exportar(b.dataset.exp); } catch (e) { alert("Não consegui gerar a imagem: " + e.message); }
+    finally { bs.forEach(x => x.disabled = false); }
+  });
+})();
+</script>
+</body>
+</html>

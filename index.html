@@ -92,6 +92,9 @@
   .dl button[aria-pressed="true"] { color: #000; background: var(--verde); border-color: var(--verde); font-weight: 700; }
   .dl a:hover, .dl button:hover { border-color: var(--verde); color: #fff; }
   .dl button[aria-pressed="true"]:hover { color: #000; }
+  .nav { display: flex; gap: 14px; font-size: .92rem; }
+  .nav a { color: var(--suave); text-decoration: none; }
+  .nav a.atual, .nav a:hover { color: var(--verde); }
   .aviso { max-width: none; border: 1px solid var(--verde); border-radius: 14px; padding: 14px 18px; font-size: .9rem; color: #d7dbdd; }
   footer { color: var(--suave); font-size: .82rem; font-weight: 300; border-top: 1px solid transparent;
     border-image: linear-gradient(90deg, var(--verde), rgba(30,215,96,0)) 1; padding-top: 14px; }
@@ -101,7 +104,7 @@
 <body>
 <div class="topo">
 <main style="padding-bottom:36px">
-  <div class="marca"><span>Liberta Investimentos</span><span class="sub">Educação financeira</span></div>
+  <div class="marca"><span>Liberta Investimentos</span><nav class="nav"><a href="index.html" class="atual">R$ 100 mil desde 2013</a><a href="retornos.html">Retorno por ano</a></nav></div>
   <header>
     <h1>R$ 100 mil aplicados em 17/11/2013: <em>quanto valem em 17/11/2026</em></h1>
     <p class="sub" id="sub">Valor em reais de hoje de cada aplicação, para quem trocou reais por dólares quando o ativo era cotado lá fora.</p>

@@ -6,6 +6,7 @@ Quanto valem em 17/11/2026 R$ 100 mil aplicados em 17/11/2013 em CDI, Ibovespa, 
 - Gráficos em `cards/`: 3 gráficos × 4 tamanhos (4:5, 1:1, stories 9:16, 16:9) × PNG, JPG e PDF, gerados por `scripts/cards.sh` a partir de `cards.html`
 - Planilha: [`dados/liberta-dados.xlsx`](dados/liberta-dados.xlsx) (as colunas calculadas são fórmulas; mude o capital em `B3`)
 - Tabela em texto: [`dados/comparacao.csv`](dados/comparacao.csv)
+- Retorno total por ano, 2017 a 2026 (página `retornos.html`): [`dados/retornos.json`](dados/retornos.json) e [`dados/retornos-anuais.csv`](dados/retornos-anuais.csv), gerados por `scripts/retornos.py` (roda à mão: usa a Comdinheiro, com credenciais locais)
 - Séries temporais: [`dados/serie-mensal.csv`](dados/serie-mensal.csv) (R$ 100 mil mês a mês), [`dados/serie-mensal-descontada-ipca.csv`](dados/serie-mensal-descontada-ipca.csv) (em reais de 2013) e [`dados/serie-diaria.csv`](dados/serie-diaria.csv) (preços originais)
 
 `python3 scripts/gerar.py` baixa tudo de fonte pública (Banco Central, IBGE, ANP, Yahoo Finance, CoinMetrics) e refaz os três arquivos de `dados/`. Precisa de `openpyxl`. As regras de data, câmbio, desdobramento e proventos estão na aba "Notas e fontes" da planilha e no fim da página.
