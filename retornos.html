@@ -69,6 +69,23 @@
   .ponto { width: 100%; height: 10px; }
   .rodape { color: var(--suave); font-size: .78rem; font-weight: 300; margin-top: 14px; display: grid; gap: 6px; max-width: 110ch; }
   .rodape a { color: var(--verde); }
+  .ver { border-color: var(--verde); }
+  .ver[aria-expanded="true"] { background: var(--verde); color: #000; font-weight: 700; }
+  .painel-graf { border: 1px solid var(--borda); border-radius: 12px; background: var(--cartao); padding: 16px 18px; margin: 0 0 14px; }
+  .graf-topo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 18px; align-items: flex-start; }
+  .graf-topo b { font-size: 1.05rem; }
+  .graf-topo .sub { font-size: .85rem; margin-top: 2px; }
+  .graf { position: relative; margin-top: 10px; }
+  .graf svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chips-graf { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
+  .chips-graf button { font: inherit; color: var(--fg); background: none; border: 1px solid #3a4a45; border-radius: 999px; padding: 3px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .chips-graf button i { width: 10px; height: 10px; border-radius: 2px; background: #5b6266; display: inline-block; }
+  .chips-graf .dica-chips { color: var(--suave); align-self: center; }
+  .dica { position: fixed; pointer-events: none; background: #0f1a17; border: 1px solid #1f4a3d; border-radius: 10px; padding: 8px 10px;
+    font-size: .8rem; box-shadow: 0 6px 18px rgba(0,0,0,.5); display: none; z-index: 5; min-width: 200px; }
+  .dica b { color: var(--verde); display: block; margin-bottom: 3px; }
+  .dica .l { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+  .dica .l i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
   .aviso { border: 1px solid var(--verde); border-radius: 12px; padding: 12px 16px; color: #d7dbdd; font-size: .86rem; margin-top: 16px; }
   .legenda { display: inline-flex; gap: 12px; align-items: center; }
   .legenda i { display: inline-block; width: 28px; height: 10px; border-radius: 2px; }
@@ -101,13 +118,29 @@
       <button class="botao" data-exp="svg">SVG</button><button class="botao" data-exp="pdf">PDF</button>
       <a class="botao" href="dados/retornos-anuais.csv" download style="text-decoration:none">CSV</a>
     </div>
+    <button class="botao ver" id="ver-grafico" aria-expanded="false">Ver gráfico</button>
   </div>
   <div class="removidos" id="removidos" hidden></div>
+  <section class="painel-graf" id="painel-graf" hidden>
+    <div class="graf-topo">
+      <div><b id="tit-graf">Retorno acumulado</b><p class="sub" id="sub-graf"></p></div>
+      <div class="controles" style="margin:0">
+        <div class="grupo">Escala:
+          <button class="botao" data-escala="normal">Normal</button><button class="botao" data-escala="log">Logarítmica</button></div>
+        <div class="grupo">Baixar:
+          <button class="botao" data-expg="png">PNG</button><button class="botao" data-expg="jpg">JPG</button>
+          <button class="botao" data-expg="svg">SVG</button><button class="botao" data-expg="pdf">PDF</button></div>
+      </div>
+    </div>
+    <div class="graf" id="graf"></div>
+    <div class="chips-graf" id="chips-graf"></div>
+  </section>
   <div class="tabela"><table id="tab"></table></div>
   <div class="rodape" id="rodape"></div>
   <p class="aviso">Rentabilidade passada não é garantia de rentabilidade futura. Retornos brutos, sem impostos, taxas e custos; não é recomendação de investimento.</p>
 </main>
 
+<div class="dica" id="dica-graf"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (async function () {
@@ -126,6 +159,17 @@
   // usar só os anos que ficaram; maior, menor e % no positivo, só os ativos que ficaram.
   const fora = new Set(), anosFora = new Set();
   let listaForaAberta = false;                                 // a lista retrátil do que saiu
+  // Gráfico do acumulado: até 4 ativos em destaque (cores validadas para daltonismo no fundo escuro),
+  // o resto em cinza; cada ativo mantém a cor enquanto estiver destacado.
+  let graficoAberto = false, escalaG = null;
+  const destaqueG = new Map();
+  function marcasLin(max) {                                     // marcas "redondas" de 0 a max
+    const bruto = max / 7, p = 10 ** Math.floor(Math.log10(bruto)), n = bruto / p;
+    const passo = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p, t = [];
+    for (let v = 0; v <= max * 1.0001; v += passo) t.push(v);
+    return t;
+  }
+  const CORES_G = ["#1ed760", "#ff5fd2", "#2fd6e0", "#ffd84d"], CINZA_G = "#5b6266", IPCA_G = "#8f979c";
   const anosVis = () => ANOS.filter(y => !anosFora.has(y));
   const fracao = R.anos_periodo - (ANOS.length - 1);          // fração do ano corrente
   const nAnos = () => anosVis().reduce((n, y) => n + (y === ATUAL ? fracao : 1), 0);
@@ -256,6 +300,125 @@
     });
     document.getElementById("sub").textContent =
       `Retorno total em %, com dividendos e juros reinvestidos, ${moeda === "brl" ? "em reais (ativos em dólar convertidos pela PTAX)" : "em dólares (ativos em reais convertidos pela PTAX)"}; ${ATUAL} até ${dataBR(R.fim_b3)}`;
+    if (graficoAberto) desenharGrafico();
+  }
+
+  // ---------- Gráfico do retorno acumulado (ativos e anos que estão na tabela) ----------
+  function seriesGrafico() {
+    const { ls } = dados();
+    const vis = anosVis(), x0 = String(+vis[0] - 1);
+    const acumula = val => { let i = 100; return [[x0, 100], ...vis.map(y => [y, i *= 1 + val(y)])]; };
+    const series = ls.map(l => ({ id: l.id, nome: l.nome, pts: acumula(y => l.v[y]) }));
+    const ipca = moeda === "brl" ? { id: "ipca", nome: "IPCA", pts: acumula(y => R.ipca[y]) } : null;
+    // destaques: some quem saiu da tabela; se nenhum, os 4 primeiros na ordem da tabela
+    for (const id of [...destaqueG.keys()]) if (!ls.some(l => l.id === id)) destaqueG.delete(id);
+    if (!destaqueG.size) ls.slice(0, 4).forEach((l, k) => destaqueG.set(l.id, CORES_G[k]));
+    return { series, ipca, xs: [x0, ...vis] };
+  }
+  function alternarDestaque(id) {
+    if (destaqueG.has(id)) destaqueG.delete(id);
+    else {
+      if (destaqueG.size >= CORES_G.length) destaqueG.delete(destaqueG.keys().next().value);
+      destaqueG.set(id, CORES_G.find(c => ![...destaqueG.values()].includes(c)));
+    }
+    desenharGrafico();
+  }
+  const pctAcum = v => { const x = v / 100 - 1; return (x < 0 ? "−" : "+") + (Math.abs(x) >= 10 ? nf(0) : nf(1)).format(Math.abs(x * 100)) + "%"; };
+  const rotX = (x, i) => i === 0 ? `fim de ${x}` : x === ATUAL ? `${x}*` : x;
+
+  // Desenha o SVG do gráfico (o mesmo vai para a tela e para a imagem baixada)
+  function svgGrafico(W, comInteracao) {
+    const { series, ipca, xs } = seriesGrafico();
+    const todos = [...series, ...(ipca ? [ipca] : [])].flatMap(s => s.pts.map(p => p[1]));
+    const maxV = Math.max(...todos), minV = Math.min(...todos);
+    if (!escalaG) escalaG = maxV / Math.max(minV, 1) > 8 ? "log" : "normal";
+    const log = escalaG === "log";
+    const H = Math.round(Math.min(560, Math.max(340, W * 0.52)));
+    const m = { l: 58, r: W < 600 ? 14 : 200, t: 14, b: 34 };
+    const X = i => m.l + i * (W - m.l - m.r) / Math.max(1, xs.length - 1);
+    const lo = log ? Math.log10(minV * 0.85) : Math.min(0, minV), hi = log ? Math.log10(maxV * 1.15) : maxV * 1.06;
+    const Y = v => m.t + (hi - (log ? Math.log10(v) : v)) / (hi - lo) * (H - m.t - m.b);
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    const el = (tag, at, pai = svg) => { const e = document.createElementNS(ns, tag); for (const k in at) e.setAttribute(k, at[k]); pai.appendChild(e); return e; };
+    const txt = (t, at) => { const e = el("text", { "font-family": "Inter, Arial, sans-serif", ...at }); e.textContent = t; return e; };
+    // grade e eixos
+    let marcas;
+    if (log) { marcas = []; for (let e = 0; e <= 8; e++) for (const k of [1, 2, 5]) { const v = k * 10 ** e; if (Math.log10(v) >= lo && Math.log10(v) <= hi) marcas.push(v); } }
+    else marcas = marcasLin(hi);
+    for (const v of marcas) {
+      el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: v === 100 ? "#3a4a45" : "#18201e", "stroke-width": 1 });
+      txt(nf(0).format(v), { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 11.5, fill: "#a7adb0" });
+    }
+    xs.forEach((x, i) => txt(rotX(x, i), { x: X(i), y: H - 10, "text-anchor": "middle", "font-size": 11.5, fill: "#a7adb0" }));
+    const caminho = pts => pts.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
+    // linhas: demais em cinza, IPCA tracejado, destaques por cima
+    const outros = series.filter(s => !destaqueG.has(s.id)), dest = series.filter(s => destaqueG.has(s.id));
+    const poucas = series.length <= 8, rotulos = [];
+    for (const s of outros) {
+      const p = el("path", { d: caminho(s.pts), fill: "none", stroke: CINZA_G, "stroke-width": 1.4, "stroke-linejoin": "round" });
+      if (comInteracao) {
+        const alvo = el("path", { d: caminho(s.pts), fill: "none", stroke: "transparent", "stroke-width": 10, style: "cursor:pointer" });
+        alvo.addEventListener("click", () => alternarDestaque(s.id));
+      }
+      if (poucas) rotulos.push({ y: Y(s.pts.at(-1)[1]), t: `${curtoNome(s.nome)} ${pctAcum(s.pts.at(-1)[1])}`, cor: "#a7adb0", forte: false });
+    }
+    if (ipca) {
+      el("path", { d: caminho(ipca.pts), fill: "none", stroke: IPCA_G, "stroke-width": 2, "stroke-dasharray": "5 4" });
+      rotulos.push({ y: Y(ipca.pts.at(-1)[1]), t: `IPCA ${pctAcum(ipca.pts.at(-1)[1])}`, cor: "#a7adb0", forte: false });
+    }
+    for (const s of dest) {
+      const cor = destaqueG.get(s.id);
+      el("path", { d: caminho(s.pts), fill: "none", stroke: "#0b0f0e", "stroke-width": 5.5, "stroke-linejoin": "round" });
+      el("path", { d: caminho(s.pts), fill: "none", stroke: cor, "stroke-width": 2.6, "stroke-linejoin": "round" });
+      s.pts.forEach((p, i) => el("circle", { cx: X(i), cy: Y(p[1]), r: 3, fill: cor }));
+      rotulos.push({ y: Y(s.pts.at(-1)[1]), t: `${curtoNome(s.nome)} ${pctAcum(s.pts.at(-1)[1])}`, cor: "#fff", forte: true, marca: cor });
+    }
+    if (W >= 600) {
+      rotulos.sort((a, b) => a.y - b.y).forEach((r, i, l) => { if (i && r.y < l[i - 1].y + 15) r.y = l[i - 1].y + 15; });
+      for (const r of rotulos) {
+        if (r.marca) el("rect", { x: W - m.r + 8, y: r.y - 4 - 4, width: 8, height: 8, rx: 2, fill: r.marca });
+        txt(r.t, { x: W - m.r + (r.marca ? 20 : 8), y: r.y + 4, "font-size": 12, "font-weight": r.forte ? 700 : 400, fill: r.cor });
+      }
+    }
+    // cruz e caixa de valores
+    if (comInteracao) {
+      const cruz = el("line", { y1: m.t, y2: H - m.b, stroke: "#a7adb0", "stroke-width": 1, opacity: 0 });
+      const area = el("rect", { x: m.l - 10, y: m.t, width: W - m.l - m.r + 20, height: H - m.t - m.b, fill: "transparent" });
+      const dica = document.getElementById("dica-graf");
+      area.addEventListener("mousemove", ev => {
+        const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+        const i = Math.max(0, Math.min(xs.length - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, xs.length - 1)))));
+        cruz.setAttribute("x1", X(i)); cruz.setAttribute("x2", X(i)); cruz.setAttribute("opacity", .6);
+        const lin = [...series, ...(ipca ? [ipca] : [])].map(s => ({ s, v: s.pts[i][1] })).sort((a, b) => b.v - a.v);
+        dica.innerHTML = `<b>${i === 0 ? `Início: fim de ${xs[0]}` : xs[i] === ATUAL ? `${xs[i]}, até ${dataBR(R.fim_b3)}` : `Fim de ${xs[i]}`}</b>` +
+          lin.map(({ s, v }) => `<div class="l"><span>${destaqueG.has(s.id) ? `<i style="background:${destaqueG.get(s.id)}"></i>` : ""}${curtoNome(s.nome)}</span><span>${pctAcum(v)}</span></div>`).join("");
+        dica.style.display = "block";
+        const w = dica.offsetWidth, h = dica.offsetHeight;
+        let x = ev.clientX + 14, y = ev.clientY + 14;
+        if (x + w > innerWidth - 8) x = ev.clientX - w - 14;
+        if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+        dica.style.left = x + "px"; dica.style.top = y + "px";
+      });
+      area.addEventListener("mouseleave", () => { dica.style.display = "none"; cruz.setAttribute("opacity", 0); });
+    }
+    return { svg, W, H };
+  }
+  function desenharGrafico() {
+    const box = document.getElementById("graf");
+    const W = Math.max(320, box.clientWidth);
+    box.innerHTML = "";
+    if (!R.linhas.some(l => !fora.has(l.id))) { box.textContent = "Nenhum ativo na tabela."; return; }
+    box.appendChild(svgGrafico(W, true).svg);
+    document.getElementById("tit-graf").textContent = `Retorno acumulado, ${rotAcum()}`;
+    document.getElementById("sub-graf").textContent =
+      `Quanto viram 100 aplicados no fim de ${+anosVis()[0] - 1}, ${moeda === "brl" ? "em reais" : "em dólares"}, com dividendos e juros reinvestidos; * ${ATUAL} até ${dataBR(R.fim_b3)}`;
+    document.querySelectorAll("[data-escala]").forEach(b => b.setAttribute("aria-pressed", b.dataset.escala === escalaG));
+    const { series } = seriesGrafico();
+    document.getElementById("chips-graf").innerHTML = `<span class="dica-chips">Destaque (até 4):</span>` + series.map(s =>
+      `<button data-dest="${s.id}" aria-pressed="${destaqueG.has(s.id)}"><i style="background:${destaqueG.get(s.id) || CINZA_G}"></i>${curtoNome(s.nome)}</button>`).join("");
+    document.querySelectorAll("[data-dest]").forEach(b => b.onclick = () => alternarDestaque(b.dataset.dest));
   }
 
   document.getElementById("rodape").innerHTML = [
@@ -391,7 +554,51 @@ ${s}
     pdf.addImage(jpg, "JPEG", 0, 0, W * .75, H * .75);
     pdf.save(nome + ".pdf");
   }
-  window._exportar = { montarSVG, rasterizar };
+  async function montarSVGGrafico() {
+    const W = 1100, { svg: g, H: GH } = svgGrafico(W, false);
+    const pad = 28, topo = 96, H = topo + GH + 64, T = W + 2 * pad;
+    g.setAttribute("x", pad); g.setAttribute("y", topo);
+    const vis = anosVis();
+    const titulo = `Retorno acumulado, ${rotAcum()}`;
+    const sub = `Quanto viram 100 aplicados no fim de ${+vis[0] - 1}, ${moeda === "brl" ? "em reais" : "em dólares"}, com dividendos e juros reinvestidos; * ${ATUAL} até ${dataBR(R.fim_b3)}`;
+    const fonte = await fonteInter();
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${H}" viewBox="0 0 ${T} ${H}">
+<style>${fonte} text { font-family: Inter, Arial, sans-serif; }</style>
+<rect width="${T}" height="${H}" fill="#0b0f0e"/><rect width="${T}" height="3" fill="#1ed760"/>
+<text x="${pad}" y="${pad + 26}" font-size="24" font-weight="800" fill="#fff">${esc(titulo)}</text>
+<text x="${pad}" y="${pad + 52}" font-size="14" font-weight="300" fill="#a7adb0">${esc(sub)}</text>
+${new XMLSerializer().serializeToString(g)}
+<text x="${pad}" y="${H - 34}" font-size="11.5" font-weight="300" fill="#a7adb0">Fontes: Comdinheiro, Banco Central, IBGE, Yahoo Finance e CoinMetrics. Mag 7: média simples das sete ações, rebalanceada a cada ano.</text>
+<text x="${pad}" y="${H - 16}" font-size="11.5" font-weight="300" fill="#a7adb0">Rentabilidade passada não é garantia de rentabilidade futura. Sem impostos e custos. · Liberta Investimentos</text>
+</svg>`;
+    return { svg, T, H };
+  }
+  async function exportarGrafico(fmt) {
+    const { svg, T, H } = await montarSVGGrafico(), vis = anosVis();
+    const nome = `retorno-acumulado-${vis[0]}-${vis.at(-1)}-${moeda === "brl" ? "reais" : "dolares"}-${escalaG}`;
+    if (fmt === "svg") return baixarURL(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), nome + ".svg");
+    if (fmt === "png") return baixarURL(await rasterizar(svg, T, H, 2.5, "image/png"), nome + ".png");
+    const jpg = await rasterizar(svg, T, H, 2.5, "image/jpeg");
+    if (fmt === "jpg") return baixarURL(jpg, nome + ".jpg");
+    const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "pt", format: [T * .75, H * .75], compress: true });
+    pdf.addImage(jpg, "JPEG", 0, 0, T * .75, H * .75);
+    pdf.save(nome + ".pdf");
+  }
+  document.getElementById("ver-grafico").onclick = ev => {
+    graficoAberto = !graficoAberto;
+    ev.currentTarget.setAttribute("aria-expanded", graficoAberto);
+    ev.currentTarget.textContent = graficoAberto ? "Esconder gráfico" : "Ver gráfico";
+    document.getElementById("painel-graf").hidden = !graficoAberto;
+    if (graficoAberto) { desenharGrafico(); document.getElementById("painel-graf").scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+  };
+  document.querySelectorAll("[data-escala]").forEach(b => b.onclick = () => { escalaG = b.dataset.escala; desenharGrafico(); });
+  document.querySelectorAll("[data-expg]").forEach(b => b.onclick = async () => {
+    const bs = document.querySelectorAll("[data-expg]"); bs.forEach(x => x.disabled = true);
+    try { await exportarGrafico(b.dataset.expg); } catch (e) { alert("Não consegui gerar a imagem: " + e.message); }
+    finally { bs.forEach(x => x.disabled = false); }
+  });
+  let tRes; addEventListener("resize", () => { clearTimeout(tRes); tRes = setTimeout(() => { if (graficoAberto) desenharGrafico(); }, 150); });
+  window._exportar = { montarSVG, rasterizar, montarSVGGrafico };
   document.querySelectorAll("[data-exp]").forEach(b => b.onclick = async () => {
     const bs = document.querySelectorAll("[data-exp]"); bs.forEach(x => x.disabled = true);
     try { await exportar(b.dataset.exp); } catch (e) { alert("Não consegui gerar a imagem: " + e.message); }
