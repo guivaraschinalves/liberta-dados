@@ -43,6 +43,10 @@
   td.nome { text-align: left; font-weight: 700; background: var(--cartao); position: sticky; left: 0; z-index: 1; min-width: 190px; }
   td.nome small { display: block; color: var(--suave); font-weight: 300; font-size: .72rem; }
   td.sep, th.sep { border-left: 2px solid transparent; }
+  tr.setor td { background: #00231b; color: #fff; font-weight: 800; font-size: .9rem; cursor: pointer; padding: 9px 10px; position: static; }
+  tr.setor td small { display: inline; margin-left: 10px; font-weight: 300; }
+  tr.setor:hover td { background: #003a2c; }
+  .seta { display: inline-block; width: 1.1em; color: var(--verde); }
   tr.resumo td { background: #111816; font-weight: 700; color: #d7dbdd; }
   tr.resumo td.nome { color: var(--suave); }
   tr.ref td { color: var(--suave); font-style: italic; }
@@ -70,6 +74,11 @@
       <button class="botao" data-moeda="brl" aria-pressed="true">Em reais</button>
       <button class="botao" data-moeda="usd" aria-pressed="false">Em dólares</button>
     </div>
+    <div class="grupo">Agrupar:
+      <button class="botao" data-agrupar="0" aria-pressed="true">Não</button>
+      <button class="botao" data-agrupar="1" aria-pressed="false">Por setor</button>
+      <button class="botao" id="abrir-todos" hidden>Abrir/fechar todos</button>
+    </div>
     <span class="legenda"><i style="background:linear-gradient(90deg, rgba(235,72,72,.75), rgba(235,72,72,.12))"></i>negativo
       <i style="background:linear-gradient(90deg, rgba(30,215,96,.12), rgba(30,215,96,.75))"></i>positivo</span>
     <div class="grupo">Baixar:
@@ -88,7 +97,29 @@
 (async function () {
   const R = await (await fetch("dados/retornos.json", { cache: "no-cache" })).json();
   const ANOS = R.anos.map(String), ATUAL = ANOS.at(-1);
-  let moeda = "brl", ordCol = ATUAL, ordDesc = true;
+  let moeda = "brl", ordCol = ATUAL, ordDesc = true, agrupar = false;
+  const SETORES = [
+    ["renda-fixa", "Renda fixa", ["cdi", "idadi", "imab", "irfm"]],
+    ["renda-variavel", "Renda variável", ["ibov", "smll", "ifix", "ewz", "petr4", "vale3", "itub4", "bbas3", "wege3", "abev3"]],
+    ["rv-exterior", "Renda variável no exterior", ["spy", "qqq", "mag7"]],
+    ["cambio", "Câmbio", ["dolar"]],
+    ["alternativos", "Alternativos (ouro e cripto)", ["gld", "btc"]],
+  ];
+  const fechados = new Set();
+  // A sequência que vai para a tela e para a imagem: com setores, um cabeçalho por setor
+  // e as linhas dele (ordenadas pela coluna escolhida); setor fechado mostra só o cabeçalho.
+  function sequencia(ls) {
+    if (!agrupar) return ls.map(l => ({ tipo: "linha", l }));
+    const seq = [];
+    for (const [id, nome, ids] of SETORES) {
+      const doSetor = ls.filter(l => ids.includes(l.id));
+      if (!doSetor.length) continue;
+      const aberto = !fechados.has(id);
+      seq.push({ tipo: "setor", id, nome, n: doSetor.length, aberto });
+      if (aberto) doSetor.forEach(l => seq.push({ tipo: "linha", l }));
+    }
+    return seq;
+  }
   const nf = d => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = x => x == null ? "—" : (x < 0 ? "−" : "") + (Math.abs(x) >= 10 ? nf(0) : nf(1)).format(Math.abs(x * 100)) + "%";
   const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
@@ -140,8 +171,10 @@
     const { ls, cols, maior, menor, positivos } = dados();
     const cab = `<tr><th data-col="nome">Ativo</th>${cols.map(c => `<th data-col="${c}" class="${c === "acum" ? "sep" : ""}">${
       c === "acum" ? `Acumulado<br>2017–${ATUAL.slice(2)}` : c === "aa" ? "Ao ano" : c === ATUAL ? `${c}<br>no ano` : c}</th>`).join("")}</tr>`;
-    const corpo = ls.map(l => `<tr><td class="nome">${l.nome}<small>${l.grupo === "Ações" ? "Ação brasileira" : l.grupo === "EUA" ? "Exterior" : "Brasil"}</small></td>${
-      cols.map(c => { const x = chave(l, c); return `<td class="${c === "acum" ? "sep" : ""}" style="background:${fundo(x)};color:${corTexto(x)}${c === ATUAL ? ";font-weight:700" : ""}">${pct(x)}</td>`; }).join("")}</tr>`).join("");
+    const corpo = sequencia(ls).map(e => e.tipo === "setor"
+      ? `<tr class="setor" data-setor="${e.id}"><td class="nome" colspan="${cols.length + 1}"><span class="seta">${e.aberto ? "▾" : "▸"}</span>${e.nome}<small>${e.n} ${e.n === 1 ? "ativo" : "ativos"}${e.aberto ? "" : " · clique para abrir"}</small></td></tr>`
+      : `<tr><td class="nome">${e.l.nome}<small>${e.l.grupo === "Ações" ? "Ação brasileira" : e.l.grupo === "EUA" ? "Exterior" : "Brasil"}</small></td>${
+      cols.map(c => { const x = chave(e.l, c); return `<td class="${c === "acum" ? "sep" : ""}" style="background:${fundo(x)};color:${corTexto(x)}${c === ATUAL ? ";font-weight:700" : ""}">${pct(x)}</td>`; }).join("")}</tr>`).join("");
     const ipca = moeda === "brl" ? (() => {
       const acum = ANOS.reduce((f, y) => f * (1 + R.ipca[y]), 1) - 1, aa = (1 + acum) ** (1 / R.anos_periodo) - 1;
       return `<tr class="ref"><td class="nome">IPCA (referência)<small>inflação; ${ATUAL} até ${mesBR(R.ipca_ate)}</small></td>${
@@ -151,6 +184,12 @@
     document.getElementById("tab").innerHTML = `<thead>${cab}</thead><tbody>${corpo}${ipca}${
       resumo("Maior retorno", c => curtoNome(maior[c].n))}${resumo("Menor retorno", c => curtoNome(menor[c].n))}${
       resumo("% dos ativos no positivo", c => nf(0).format(positivos[c] * 100) + "%")}</tbody>`;
+    document.querySelectorAll("#tab tr.setor").forEach(tr => tr.onclick = () => {
+      const id = tr.dataset.setor;
+      if (fechados.has(id)) fechados.delete(id); else fechados.add(id);
+      desenhar();
+    });
+    document.getElementById("abrir-todos").hidden = !agrupar;
     document.querySelectorAll("#tab th").forEach(th => {
       if (th.dataset.col === ordCol) th.classList.add("ord", ...(ordDesc ? [] : ["cresc"]));
       th.onclick = () => { if (ordCol === th.dataset.col) ordDesc = !ordDesc; else { ordCol = th.dataset.col; ordDesc = th.dataset.col !== "nome"; } desenhar(); };
@@ -165,6 +204,15 @@
     `Atualizado em ${R.gerado}.`
   ].map(t => `<p style="margin:0">${t}</p>`).join("");
 
+  document.querySelectorAll("[data-agrupar]").forEach(b => b.onclick = () => {
+    agrupar = b.dataset.agrupar === "1";
+    document.querySelectorAll("[data-agrupar]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    desenhar();
+  });
+  document.getElementById("abrir-todos").onclick = () => {
+    if (fechados.size) fechados.clear(); else SETORES.forEach(([id]) => fechados.add(id));
+    desenhar();
+  };
   document.querySelectorAll("[data-moeda]").forEach(b => b.onclick = () => {
     moeda = b.dataset.moeda;
     document.querySelectorAll("[data-moeda]").forEach(x => x.setAttribute("aria-pressed", x === b));
@@ -195,7 +243,8 @@
     const { ls, cols, maior, menor, positivos } = dados();
     const pad = 28, wNome = 220, wCel = 74, hLin = 30, gap = 2;
     const W = pad * 2 + wNome + cols.length * (wCel + gap) + 8;
-    const yTab = 124, linhas = ls.length + (moeda === "brl" ? 1 : 0) + 3;
+    const seq = sequencia(ls);
+    const yTab = 124, linhas = seq.length + (moeda === "brl" ? 1 : 0) + 3;
     const H = yTab + hLin + linhas * (hLin + gap) + 84;
     const x = i => pad + wNome + gap + i * (wCel + gap) + (cols[i] === "acum" || cols[i] === "aa" ? 8 : 0);
     let s = "";
@@ -209,9 +258,16 @@
     const celula = (i, txt, bg, cor, negrito) =>
       `<rect x="${x(i)}" y="${y}" width="${wCel}" height="${hLin}" rx="4" fill="${bg}"/>` +
       `<text x="${x(i) + wCel - 7}" y="${y + 20}" text-anchor="end" fill="${cor}" font-weight="${negrito ? 700 : 400}" class="n">${esc(txt)}</text>`;
-    for (const l of ls) {
-      s += `<text x="${pad}" y="${y + 20}" class="nome">${esc(l.nome)}</text>`;
-      cols.forEach((c, i) => { const v = chave(l, c); s += celula(i, pct(v), fundo(v), corTexto(v), c === ATUAL); });
+    for (const e of seq) {
+      if (e.tipo === "setor") {
+        s += `<rect x="${pad - 4}" y="${y}" width="${W - 2 * pad + 8}" height="${hLin}" rx="4" fill="#00231b"/>`;
+        s += `<text x="${pad}" y="${y + 20}" class="setor">${esc(e.nome)}</text>`;
+        if (!e.aberto) s += `<text x="${W - pad}" y="${y + 20}" text-anchor="end" class="r">${e.n} ${e.n === 1 ? "ativo" : "ativos"}, recolhidos</text>`;
+      } else {
+        const l = e.l;
+        s += `<text x="${pad}" y="${y + 20}" class="nome">${esc(l.nome)}</text>`;
+        cols.forEach((c, i) => { const v = chave(l, c); s += celula(i, pct(v), fundo(v), corTexto(v), c === ATUAL); });
+      }
       y += hLin + gap;
     }
     if (moeda === "brl") {
@@ -237,7 +293,7 @@
 text { font-family: Inter, Arial, sans-serif; fill: #fff; font-size: 13px; }
 .t { font-size: 26px; font-weight: 800; } .s { font-size: 15px; font-weight: 300; fill: #a7adb0; }
 .cab { font-size: 12px; font-weight: 700; fill: #1ed760; } .nome { font-weight: 700; } .n { font-size: 13px; }
-.ref { fill: #a7adb0; font-style: italic; } .res { fill: #d7dbdd; font-weight: 700; font-size: 12px; }
+.ref { fill: #a7adb0; font-style: italic; } .setor { font-weight: 800; font-size: 14px; fill: #1ed760; } .res { fill: #d7dbdd; font-weight: 700; font-size: 12px; }
 .r { font-size: 11.5px; font-weight: 300; fill: #a7adb0; }
 </style>
 <rect width="${W}" height="${H}" fill="#0b0f0e"/>
